@@ -47,7 +47,7 @@ function AuthScreen({onAuth}){
 // ADMIN
 function AdminPanel(){
   const[users,setU]=useState([]),[ld,sL]=useState(false);
-  const reload=async()=>{const{data}=await supabase.rpc('get_all_profiles');setU(data||[]);sL(true);};
+  const reload=async()=>{const{data}=await supabase.rpc('sync_and_get_profiles');setU(data||[]);sL(true);};
   useEffect(()=>{reload();},[]);
   const approve=async em=>{await supabase.rpc('update_user_status',{target_email:em,new_status:'approved'});reload();};
   const deny=async em=>{await supabase.rpc('update_user_status',{target_email:em,new_status:'denied'});reload();};
