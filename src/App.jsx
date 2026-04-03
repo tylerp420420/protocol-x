@@ -135,7 +135,7 @@ export default function App(){
   const[user,setUser]=useState(null),[isAdmin,setIsAdmin]=useState(false),[pg,sPg]=useState("today"),[d,sD]=useState(DD()),[ld,sLd]=useState(false),[toast,sT]=useState({v:false,a:0}),[pendingCount,sPC]=useState(0),[checking,setChecking]=useState(true);
 const mobile=useIsMobile();const[sideOpen,setSideOpen]=useState(false);
 
-  useEffect(()=>{supabase.auth.getSession().then(({data:{session}})=>{if(session?.user){supabase.from('profiles').select('*').eq('id',session.user.id).single().then(({data:prof})=>{if(prof&&prof.status==='approved'){setUser(session.user);setIsAdmin(prof.is_admin||prof.email===ADMIN_EMAIL);}else{supabase.auth.signOut();}setChecking(false);});}else{setChecking(false);}});},[]);
+  useEffect(()=>{supabase.auth.getSession().then(({data:{session}})=>{if(session?.user){if(session.user.email===ADMIN_EMAIL){setUser(session.user);setIsAdmin(true);setChecking(false);return;}supabase.rpc('check_user_status',{user_id:session.user.id}).then(({data:profArr})=>{const prof=profArr&&profArr[0]?profArr[0]:null;if(prof&&prof.status==='approved'){setUser(session.user);setIsAdmin(prof.is_admin||false);}else{supabase.auth.signOut();}setChecking(false);});}else{setChecking(false);}});supabase.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){setUser(null);setIsAdmin(false);sLd(false);}});},[]);
 
   useEffect(()=>{if(!isAdmin)return;const check=async()=>{const{data}=await supabase.rpc('get_all_profiles');sPC((data||[]).filter(x=>x.status==="pending").length);};check();const iv=setInterval(check,15000);return()=>clearInterval(iv);},[isAdmin]);
 
