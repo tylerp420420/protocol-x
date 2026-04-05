@@ -688,6 +688,8 @@ function TradingHub({data:d,setData:sd,onClose}){
   const[flt,sFlt]=useState({year:"All",month:"All",session:"All",asset:"All",dow:"All",result:"All"});
   const[af,sAf]=useState({date:td(),time:"09:00",symbol:"",direction:"long",session:"LDN",rValue:"",setup:"",notes:""});
   const[csvMsg,sCsvMsg]=useState("");
+  const[addMode,sAddMode]=useState("paste");
+  const[pasteText,sPasteText]=useState("");
   const fileRef=useRef();
   const mobile=useIsMobile();
   const ts=d.trades||[];
@@ -734,6 +736,8 @@ function TradingHub({data:d,setData:sd,onClose}){
   const importC=e=>{const file=e.target.files[0];if(!file)return;const rdr=new FileReader();rdr.onload=ev=>{const lines=ev.target.result.split("\n").filter(l=>l.trim());const nT=[];for(let i=1;i<lines.length;i++){const c=lines[i].split(",").map(x=>x.trim().replace(/^"|"$/g,""));if(c.length<6)continue;const[dt,ti,sym,dir,sess,rv,...rest]=c;const rv2=parseFloat(rv);if(!dt||!sym||isNaN(rv2))continue;nT.push({id:"t"+Date.now()+i,date:dt,time:ti||"09:00",symbol:sym.toUpperCase(),direction:dir||"long",session:sess||"OTHER",rValue:rv2,result:rv2>0?"win":rv2<0?"loss":"be",setup:rest[0]||"",notes:rest[1]||""});}if(!nT.length){sCsvMsg("No valid rows. Format: date,time,symbol,direction,session,r");return;}sd({...d,trades:[...(d.trades||[]),...nT]});sCsvMsg(nT.length+" trades imported!");setTimeout(()=>sCsvMsg(""),3000);};rdr.readAsText(file);e.target.value="";};
   const exportC=()=>{const rows=[["date","time","symbol","direction","session","r","result","setup","notes"],...(d.trades||[]).map(t=>[t.date,t.time,t.symbol,t.direction,t.session,t.rValue,t.result,t.setup||"",t.notes||""])];const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}));a.download="protocol_x_trades.csv";a.click();};
 
+  const normDate=s=>{if(!s)return null;s=s.trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const a=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(a){const[,p1,p2,yr]=a;return parseInt(p1)>12?`${yr}-${p2.padStart(2,"0")}-${p1.padStart(2,"0")}`:`${yr}-${p1.padStart(2,"0")}-${p2.padStart(2,"0")}`;}const b=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);if(b)return `${b[1]}-${b[2].padStart(2,"0")}-${b[3].padStart(2,"0")}`;return null;};
+  const parsePaste=raw=>{if(!raw.trim())return[];const lines=raw.trim().split("\n").filter(l=>l.trim());if(!lines.length)return[];const sep=lines[0].includes("\t")?"\t":",";const rows=lines.map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,"")));const h0=rows[0].map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,""));const MAPS={date:["date","day","tradedate"],time:["time","entrytime"],symbol:["symbol","pair","instrument","asset","market","ticker","currency"],direction:["direction","side","type","dir","buysell","longshort"],session:["session","sess","market"],r:["r","rvalue","rr","pnl","pandl","profit","result","risk"],setup:["setup","strategy","pattern","strat","entry","signal"],notes:["notes","note","comment","comments","detail","details","remarks"]};const colMap={date:-1,time:-1,symbol:-1,direction:-1,session:-1,r:-1,setup:-1,notes:-1};let hasHeader=false;for(const[f,aliases]of Object.entries(MAPS)){for(let i=0;i<h0.length;i++){if(aliases.some(a=>h0[i].includes(a))){colMap[f]=i;hasHeader=true;break;}}}if(!hasHeader){Object.assign(colMap,{date:0,time:1,symbol:2,direction:3,session:4,r:5,setup:6,notes:7});}const data=rows.slice(hasHeader?1:0);return data.map((cols,i)=>{const g=k=>colMap[k]>=0&&colMap[k]<cols.length?cols[colMap[k]]:"";const dt=normDate(g("date"));const sym=(g("symbol")||"").toUpperCase().replace(/[^A-Z0-9./]/g,"");const raw=g("r").replace(/\s/g,"");const rv=parseFloat(raw.replace(/[^0-9.\-+]/g,""));const errs=[];if(!dt)errs.push("invalid date");if(!sym)errs.push("missing symbol");if(isNaN(rv))errs.push("invalid R value");const rawDir=(g("direction")||"long").toLowerCase();const dir=rawDir.includes("sell")||rawDir.includes("short")?"short":"long";const rawSess=(g("session")||"OTHER").toUpperCase().trim();const sess=["LDN","NY","ASIA","OTHER"].includes(rawSess)?rawSess:(rawSess.includes("LON")?"LDN":rawSess.includes("NEW")||rawSess.includes("NY")?"NY":rawSess.includes("ASIA")?"ASIA":"OTHER");return{id:"t"+Date.now()+i,date:dt||"",time:g("time")||"09:00",symbol:sym,direction:dir,session:sess,rValue:isNaN(rv)?0:rv,result:isNaN(rv)||rv===0?"be":rv>0?"win":"loss",setup:g("setup")||"",notes:g("notes")||"",valid:errs.length===0,errs};}).filter(r=>r.date||r.symbol);};
   const FltSel=({l,k,opts})=><div><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:700,marginBottom:4}}>{l}</div><select value={flt[k]} onChange={e=>sFlt({...flt,[k]:e.target.value})} style={{background:C.cd,border:"1px solid "+C.bd,borderRadius:8,padding:"7px 10px",color:C.tx,fontSize:12,cursor:"pointer",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}>{["All",...opts].map(o=><option key={o} value={o}>{o}</option>)}</select></div>;
   const BrkRows=({rows})=>rows.length===0?<div style={{color:C.sb,fontSize:12,padding:"8px 0"}}>No data</div>:<>{rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid "+C.bd}}><span style={{color:C.tx,fontSize:13,fontWeight:600,flex:1}}>{r.k}</span><div style={{display:"flex",gap:18}}><div style={{textAlign:"right",minWidth:40}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>TRADES</div><div style={{color:C.tx,fontSize:13,fontWeight:700}}>{r.tr}</div></div><div style={{textAlign:"right",minWidth:44}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>WIN%</div><div style={{color:wc(r.wp),fontSize:13,fontWeight:700}}>{r.wp}%</div></div><div style={{textAlign:"right",minWidth:60}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>TOTAL R</div><div style={{color:rc(r.tR),fontSize:13,fontWeight:700}}>{rf(r.tR)}</div></div></div></div>)}</>;
   const TSC=({label,value,sub,glow})=><div style={{background:C.cd,border:"1px solid "+C.bd,borderRadius:14,padding:"16px 20px",flex:1,minWidth:130,...(glow?{boxShadow:"0 0 24px "+glow}:{})}}><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.8,fontWeight:700,marginBottom:8,fontFamily:"Outfit,sans-serif"}}>{label}</div><div style={{fontFamily:"Outfit,sans-serif",lineHeight:1}}>{value}</div>{sub&&<div style={{marginTop:8}}>{sub}</div>}</div>;
@@ -841,29 +845,93 @@ function TradingHub({data:d,setData:sd,onClose}){
     </div>}
 
     {/* ADD TRADE */}
-    {tpg==="add"&&<div style={{maxWidth:540}}>
-      <SH title="Log Trade" sub="Record your execution precisely."/>
-      <Cd style={{padding:24}}>
+    {tpg==="add"&&<div>
+      <SH title="Log Trades" sub="Paste directly from Google Sheets or enter one manually."/>
+      {/* Mode toggle */}
+      <div style={{display:"flex",gap:4,marginBottom:18,background:C.cd,border:"1px solid "+C.bd,borderRadius:12,padding:4}}>
+        {[{k:"paste",l:"📋 Paste from Sheets",sub:"Paste multiple rows at once"},{k:"single",l:"✏️ Single Trade",sub:"Manual entry form"}].map(m=><button key={m.k} onClick={()=>{sAddMode(m.k);sPasteText("");}} style={{flex:1,padding:"10px 12px",borderRadius:9,border:"none",background:addMode===m.k?"linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.08))":  "transparent",cursor:"pointer",textAlign:"left"}}><div style={{color:addMode===m.k?"#10b981":C.tx,fontSize:12.5,fontWeight:700,fontFamily:"Plus Jakarta Sans,sans-serif"}}>{m.l}</div><div style={{color:C.sb,fontSize:10.5,marginTop:2}}>{m.sub}</div></button>)}
+      </div>
+
+      {/* PASTE MODE */}
+      {addMode==="paste"&&(()=>{
+        const preview=parsePaste(pasteText);
+        const valid=preview.filter(r=>r.valid);
+        const invalid=preview.filter(r=>!r.valid);
+        const confirmAll=()=>{if(!valid.length)return;sd({...d,trades:[...(d.trades||[]),...valid.map(({valid:_,errs:__,...t})=>t)]});sPasteText("");sTpg("log");};
+        return <div>
+          <Cd style={{padding:20,marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div><div style={{color:C.tx,fontSize:13,fontWeight:700}}>Paste your Google Sheets data below</div><div style={{color:C.sb,fontSize:11,marginTop:2}}>Select your rows in Sheets (Ctrl+C / Cmd+C) then paste here. Headers optional.</div></div>
+              {pasteText&&<div style={{display:"flex",gap:8,alignItems:"center"}}>{valid.length>0&&<span style={{color:C.gn,fontSize:11,fontWeight:700,background:C.gg,padding:"3px 10px",borderRadius:6}}>{valid.length} valid</span>}{invalid.length>0&&<span style={{color:C.rd,fontSize:11,fontWeight:700,background:C.rg,padding:"3px 10px",borderRadius:6}}>{invalid.length} errors</span>}</div>}
+            </div>
+            <textarea value={pasteText} onChange={e=>sPasteText(e.target.value)} placeholder={"Paste rows here — e.g. from Google Sheets:\n\n2024-01-15\t09:30\tEURUSD\tlong\tLDN\t1.5\tBOS\tGood setup\n2024-01-16\t14:00\tNQ\tshort\tNY\t-1.0\tMSS\tEarly entry\n\nColumn headers are auto-detected if present."} rows={8} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"12px 14px",color:C.tx,fontSize:12,width:"100%",boxSizing:"border-box",resize:"vertical",outline:"none",fontFamily:"monospace",lineHeight:1.7}}/>
+          </Cd>
+
+          {/* Tips */}
+          {!pasteText&&<Cd style={{padding:16,marginBottom:16,borderColor:"rgba(16,185,129,0.2)",background:"rgba(16,185,129,0.04)"}}>
+            <div style={{color:"#10b981",fontSize:9.5,letterSpacing:1.5,fontWeight:700,marginBottom:10}}>HOW IT WORKS</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[{n:"1. Open Google Sheets",d:"Your trading journal with all your trades"},{n:"2. Select your data",d:"Highlight all rows (with or without headers)"},{n:"3. Copy (Cmd+C)",d:"Then click the text box above and paste"},{n:"4. Review & confirm",d:"Preview all detected trades, then import"}].map(s=><div key={s.n} style={{display:"flex",gap:8}}><div style={{width:20,height:20,borderRadius:6,background:"rgba(16,185,129,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><div style={{width:6,height:6,borderRadius:"50%",background:"#10b981"}}/></div><div><div style={{color:C.tx,fontSize:11.5,fontWeight:600}}>{s.n}</div><div style={{color:C.sb,fontSize:10.5,marginTop:1}}>{s.d}</div></div></div>)}
+            </div>
+            <div style={{marginTop:14,padding:"10px 14px",background:C.cd,borderRadius:8,border:"1px solid "+C.bd}}>
+              <div style={{color:C.sb,fontSize:9,letterSpacing:1.5,fontWeight:700,marginBottom:6}}>SUPPORTED COLUMN ORDER (auto-detected)</div>
+              <div style={{color:C.sb,fontSize:11,fontFamily:"monospace"}}>Date · Time · Symbol · Direction · Session · R · Setup · Notes</div>
+              <div style={{color:C.mt,fontSize:10,marginTop:4}}>Column headers are matched automatically — "Pair", "Instrument", "P&L" etc. all work.</div>
+            </div>
+          </Cd>}
+
+          {/* Preview */}
+          {preview.length>0&&<div style={{marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700}}>PREVIEW — {preview.length} ROW{preview.length!==1?"S":""} DETECTED</div>
+              <Bt onClick={()=>sPasteText("")} v="secondary" style={{padding:"5px 12px",fontSize:10}}>Clear</Bt>
+            </div>
+            <div style={{maxHeight:340,overflowY:"auto",borderRadius:10,border:"1px solid "+C.bd}}>
+              <div style={{display:"grid",gridTemplateColumns:"90px 80px 70px 70px 55px 55px 80px 1fr 80px",gap:6,padding:"7px 14px",background:"rgba(255,255,255,0.02)",borderBottom:"1px solid "+C.bd}}>
+                {["DATE","TIME","SYMBOL","DIRECTION","SESSION","R","RESULT","SETUP / NOTES","STATUS"].map(h=><div key={h} style={{color:C.sb,fontSize:8,letterSpacing:1.2,fontWeight:700}}>{h}</div>)}
+              </div>
+              {preview.map((r,i)=><div key={i} style={{display:"grid",gridTemplateColumns:"90px 80px 70px 70px 55px 55px 80px 1fr 80px",gap:6,padding:"9px 14px",borderBottom:"1px solid "+C.bd,background:r.valid?"transparent":"rgba(239,68,68,0.05)",alignItems:"center"}}>
+                <div style={{color:r.valid?C.tx:C.rd,fontSize:11,fontWeight:r.valid?500:700}}>{r.date||"—"}</div>
+                <div style={{color:C.sb,fontSize:11}}>{r.time}</div>
+                <div style={{color:C.tx,fontWeight:800,fontSize:12,fontFamily:"Outfit,sans-serif"}}>{r.symbol||"—"}</div>
+                <div style={{color:r.direction==="long"?C.gn:C.rd,fontSize:11,fontWeight:600,textTransform:"uppercase"}}>{r.direction}</div>
+                <div style={{color:C.sb,fontSize:11}}>{r.session}</div>
+                <div style={{color:r.rValue>0?C.gn:r.rValue<0?C.rd:C.sb,fontWeight:700,fontSize:12,fontFamily:"Outfit,sans-serif"}}>{isNaN(r.rValue)?"?":((r.rValue>=0?"+":"")+r.rValue.toFixed(1)+"R")}</div>
+                <div style={{color:r.result==="win"?C.gn:r.result==="loss"?C.rd:C.sb,fontSize:9,fontWeight:700,letterSpacing:1}}>{r.result.toUpperCase()}</div>
+                <div style={{color:C.sb,fontSize:10,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{[r.setup,r.notes].filter(Boolean).join(" · ")||"–"}</div>
+                <div>{r.valid?<span style={{color:C.gn,fontSize:9,fontWeight:700,background:C.gg,padding:"2px 7px",borderRadius:4}}>✓ VALID</span>:<span style={{color:C.rd,fontSize:9,fontWeight:700}}>{r.errs.join(", ")}</span>}</div>
+              </div>)}
+            </div>
+            {invalid.length>0&&<div style={{color:C.sb,fontSize:11,marginTop:8,padding:"8px 12px",background:C.rg,borderRadius:8,border:"1px solid rgba(239,68,68,0.15)"}}>⚠ {invalid.length} row{invalid.length!==1?"s":""} with errors will be skipped. Fix in your sheet and re-paste.</div>}
+            <div style={{display:"flex",gap:10,marginTop:14}}>
+              {valid.length>0&&<Bt onClick={confirmAll} style={{flex:1,justifyContent:"center",padding:"13px",fontSize:13}}>✓ Import {valid.length} Trade{valid.length!==1?"s":""}</Bt>}
+              <Bt v="secondary" onClick={()=>sTpg("log")} style={{padding:"13px 20px"}}>Cancel</Bt>
+            </div>
+          </div>}
+        </div>;
+      })()}
+
+      {/* SINGLE TRADE MODE */}
+      {addMode==="single"&&<Cd style={{padding:24,maxWidth:520}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
           <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>DATE</label><Inp value={af.date} onChange={e=>sAf({...af,date:e.target.value})} type="date" style={{width:"100%"}}/></div>
           <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>TIME</label><Inp value={af.time} onChange={e=>sAf({...af,time:e.target.value})} type="time" style={{width:"100%"}}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
           <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SYMBOL</label><Inp value={af.symbol} onChange={e=>sAf({...af,symbol:e.target.value})} placeholder="EURUSD, NQ, GBPUSD..." style={{width:"100%"}}/></div>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>R VALUE <span style={{color:C.sb,fontSize:8}}>(+1.5 win · -1.0 loss)</span></label><Inp value={af.rValue} onChange={e=>sAf({...af,rValue:e.target.value})} placeholder="+1.5 or -1.0" type="number" step="0.1" style={{width:"100%"}}/></div>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>R VALUE</label><Inp value={af.rValue} onChange={e=>sAf({...af,rValue:e.target.value})} placeholder="+1.5 or -1.0" type="number" step="0.1" style={{width:"100%"}}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
           <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>DIRECTION</label><select value={af.direction} onChange={e=>sAf({...af,direction:e.target.value})} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}><option value="long">Long</option><option value="short">Short</option></select></div>
           <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SESSION</label><select value={af.session} onChange={e=>sAf({...af,session:e.target.value})} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}>{ss.map(s=><option key={s}>{s}</option>)}</select></div>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SETUP TAG</label><Inp value={af.setup} onChange={e=>sAf({...af,setup:e.target.value})} placeholder="BOS, MSS, ICT..." style={{width:"100%"}}/></div>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SETUP</label><Inp value={af.setup} onChange={e=>sAf({...af,setup:e.target.value})} placeholder="BOS, MSS..." style={{width:"100%"}}/></div>
         </div>
-        <div style={{marginBottom:18}}><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>NOTES</label><textarea value={af.notes} onChange={e=>sAf({...af,notes:e.target.value})} placeholder="What happened? Emotions, execution notes, what you'd do differently..." rows={3} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",boxSizing:"border-box",resize:"vertical",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}/></div>
+        <div style={{marginBottom:18}}><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>NOTES</label><textarea value={af.notes} onChange={e=>sAf({...af,notes:e.target.value})} placeholder="Execution notes..." rows={3} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",boxSizing:"border-box",resize:"vertical",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}/></div>
         <div style={{display:"flex",gap:10}}>
           <Bt onClick={addT} style={{flex:1,justifyContent:"center",padding:"12px",fontSize:13}}>✓ Save Trade</Bt>
           <Bt v="secondary" onClick={()=>sTpg("log")} style={{padding:"12px 18px"}}>Cancel</Bt>
         </div>
-      </Cd>
-      <div style={{marginTop:20}}><div style={{color:C.sb,fontSize:9,letterSpacing:1.5,fontWeight:700,marginBottom:8}}>CSV IMPORT FORMAT</div><Cd style={{padding:14}}><div style={{color:C.sb,fontSize:11,fontFamily:"monospace",lineHeight:1.9}}>date,time,symbol,direction,session,r,setup,notes<br/>2024-01-15,09:30,EURUSD,long,LDN,1.5,BOS,Clean setup<br/>2024-01-16,14:00,NQ,short,NY,-1.0,MSS,Early entry</div></Cd></div>
+      </Cd>}
     </div>}
 
     </div>
