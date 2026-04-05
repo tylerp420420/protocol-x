@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, AreaChart, Area, LineChart, Line } from "recharts";
 import { supabase } from "./supabase";
 
@@ -19,7 +20,7 @@ const tq=()=>QS[doy()%QS.length];
 const gr=x=>{let r=RK[0];for(const k of RK){if(x>=k.x)r=k;else break;}return r;};
 const nrk=x=>{for(const k of RK){if(x<k.x)return k;}return null;};
 
-const DD=()=>({xp:0,habits:[{id:"h1",name:"Morning Routine",active:true},{id:"h2",name:"Exercise",active:true},{id:"h3",name:"Read 30 mins",active:true},{id:"h4",name:"No Social Media before 12pm",active:true},{id:"h5",name:"Gratitude Practice",active:true}],habitLog:{},goals:{daily:[],weekly:[],monthly:[],yearly:[]},goalArchive:[],journal:[],workouts:[],transactions:[],books:[],sleepLog:{},meals:[],macroTargets:{calories:2500,protein:150,carbs:300,fat:80},weightLog:[],weightTarget:{weight:null,date:null},recentScans:[],routine:[{id:"r1",time:"06:00",name:"Wake Up & Hydrate"},{id:"r2",time:"06:30",name:"Gym / Training"},{id:"r3",time:"08:00",name:"Shower & Prep"},{id:"r4",time:"08:30",name:"Deep Work Block 1"},{id:"r5",time:"12:00",name:"Lunch"},{id:"r6",time:"13:00",name:"Deep Work Block 2"},{id:"r7",time:"17:00",name:"Review & Plan Tomorrow"},{id:"r8",time:"21:00",name:"Wind Down & Read"},{id:"r9",time:"22:00",name:"Lights Out"}],routineSat:[],routineSun:[],routineLog:{},streak:0,bestStreak:0,lastDate:td(),lastWeek:wkk(),lastMonth:mkk(),lastYear:ykk()});
+const DD=()=>({xp:0,habits:[{id:"h1",name:"Morning Routine",active:true},{id:"h2",name:"Exercise",active:true},{id:"h3",name:"Read 30 mins",active:true},{id:"h4",name:"No Social Media before 12pm",active:true},{id:"h5",name:"Gratitude Practice",active:true}],habitLog:{},goals:{daily:[],weekly:[],monthly:[],yearly:[]},goalArchive:[],journal:[],workouts:[],transactions:[],books:[],sleepLog:{},meals:[],macroTargets:{calories:2500,protein:150,carbs:300,fat:80},weightLog:[],weightTarget:{weight:null,date:null},recentScans:[],waterLog:{},waterTarget:2500,routine:[{id:"r1",time:"06:00",name:"Wake Up & Hydrate"},{id:"r2",time:"06:30",name:"Gym / Training"},{id:"r3",time:"08:00",name:"Shower & Prep"},{id:"r4",time:"08:30",name:"Deep Work Block 1"},{id:"r5",time:"12:00",name:"Lunch"},{id:"r6",time:"13:00",name:"Deep Work Block 2"},{id:"r7",time:"17:00",name:"Review & Plan Tomorrow"},{id:"r8",time:"21:00",name:"Wind Down & Read"},{id:"r9",time:"22:00",name:"Lights Out"}],routineSat:[],routineSun:[],routineLog:{},streak:0,bestStreak:0,lastDate:td(),lastWeek:wkk(),lastMonth:mkk(),lastYear:ykk()});
 
 async function loadUD(uid){try{const{data}=await supabase.from('user_data').select('data').eq('id',uid).single();return data&&data.data?{...DD(),...data.data}:DD();}catch{return DD();}}
 async function saveUD(uid,d){try{await supabase.from('user_data').upsert({id:uid,data:d,updated_at:new Date().toISOString()});}catch(e){console.error(e);}}
@@ -99,43 +100,41 @@ function Nutrition({data:d,setData:sd,sxp}){
   const[scanning,setScanning]=useState(false),[scanErr,sScanErr]=useState(""),[manualBC,sManualBC]=useState("");
   const[searchQ,sSearchQ]=useState(""),[searchRes,sSearchRes]=useState([]),[searching,setSearching]=useState(false);
   const[product,sProduct]=useState(null),[servingG,sServingG]=useState("100");
-  const videoRef=useRef(null),streamRef=useRef(null),detectorRef=useRef(null),loopRef=useRef(null);
-
+  // Macro target editing
+  const[editMT,sEditMT]=useState(false);
   const tgt=d.macroTargets||{calories:2500,protein:150,carbs:300,fat:80};
-  const tm=(d.meals||[]).filter(m=>m.date===td());
-  const tC=tm.reduce((a,m)=>a+(m.calories||0),0),tP=tm.reduce((a,m)=>a+(m.protein||0),0),tCb=tm.reduce((a,m)=>a+(m.carbs||0),0),tF=tm.reduce((a,m)=>a+(m.fat||0),0);
-
-  const stopCamera=()=>{if(loopRef.current)cancelAnimationFrame(loopRef.current);if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}};
+  const[tgtDraft,sTgtDraft]=useState({calories:String(tgt.calories),protein:String(tgt.protein),carbs:String(tgt.carbs),fat:String(tgt.fat)});
+  // Water
+  const waterTarget=d.waterTarget||2500;
+  const todayWater=(d.waterLog||{})[td()]||[];
+  const waterMl=todayWater.reduce((a,v)=>a+v,0);
+  const[editWT,sEditWT]=useState(false),[wtDraft,sWtDraft]=useState(String(waterTarget));
+  const addWater=ml=>{const log=d.waterLog||{};const arr=[...(log[td()]||[]),ml];sd({...d,waterLog:{...log,[td()]:arr}});};
+  const undoWater=()=>{const log=d.waterLog||{};const arr=[...(log[td()]||[])];arr.pop();sd({...d,waterLog:{...log,[td()]:arr}});};
+  // ZXing refs
+  const videoRef=useRef(null),controlsRef=useRef(null);
+  const stopCamera=()=>{if(controlsRef.current){try{controlsRef.current.stop();}catch{}controlsRef.current=null;}setScanning(false);};
   useEffect(()=>()=>stopCamera(),[]);
 
-  const startScan=async()=>{
-    sScanErr("");sMode("scan");
-    if(!("BarcodeDetector" in window))return;
-    try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280}}});
-      streamRef.current=stream;
-      detectorRef.current=new window.BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf"]});
-      setScanning(true);
-    }catch{sScanErr("Camera access denied. Enter barcode manually below.");}
-  };
+  const startScan=()=>{sScanErr("");sMode("scan");};
 
   useEffect(()=>{
-    if(mode==="scan"&&scanning&&videoRef.current&&streamRef.current){
-      const vid=videoRef.current;
-      vid.srcObject=streamRef.current;
-      vid.play().then(()=>{
-        const loop=async()=>{
-          if(!detectorRef.current||!vid||vid.readyState<2){loopRef.current=requestAnimationFrame(loop);return;}
-          try{
-            const codes=await detectorRef.current.detect(vid);
-            if(codes.length){stopCamera();setScanning(false);lookupBarcode(codes[0].rawValue);}
-            else loopRef.current=requestAnimationFrame(loop);
-          }catch{loopRef.current=requestAnimationFrame(loop);}
-        };
-        loopRef.current=requestAnimationFrame(loop);
-      }).catch(()=>sScanErr("Could not start camera preview."));
-    }
-  },[mode,scanning]);
+    if(mode!=="scan")return;
+    let live=true;
+    const reader=new BrowserMultiFormatReader();
+    reader.decodeFromConstraints(
+      {video:{facingMode:{ideal:"environment"},width:{ideal:1280}}},
+      videoRef.current,
+      (result,err,controls)=>{
+        if(!controlsRef.current)controlsRef.current=controls;
+        if(result&&live){live=false;try{controls.stop();}catch{}controlsRef.current=null;lookupBarcode(result.getText());}
+      }
+    ).then(controls=>{
+      if(!live){try{controls.stop();}catch{}return;}
+      controlsRef.current=controls;setScanning(true);
+    }).catch(()=>sScanErr("Camera access denied — try entering the barcode manually."));
+    return()=>{live=false;if(controlsRef.current){try{controlsRef.current.stop();}catch{}controlsRef.current=null;}};
+  },[mode]);
 
   const lookupBarcode=async bc=>{
     sMode("loading");sScanErr("");
@@ -146,10 +145,9 @@ function Nutrition({data:d,setData:sd,sxp}){
         const p=data.product,n=p.nutriments||{};
         const pd={barcode:bc,name:p.product_name||"Unknown Product",brand:p.brands||"",stores:p.stores||"",image:p.image_url||"",servingSize:p.serving_size||"100g",servingGrams:parseFloat(p.serving_quantity)||100,per100:{calories:parseFloat(n["energy-kcal_100g"])||parseFloat(n["energy-kcal"])||0,protein:parseFloat(n["proteins_100g"])||0,carbs:parseFloat(n["carbohydrates_100g"])||0,fat:parseFloat(n["fat_100g"])||0}};
         sProduct(pd);sServingG(String(pd.servingGrams));
-        const recent=(d.recentScans||[]).filter(r=>r.barcode!==bc);
-        sd({...d,recentScans:[pd,...recent].slice(0,8)});
+        sd(prev=>({...prev,recentScans:[pd,...(prev.recentScans||[]).filter(r=>r.barcode!==bc)].slice(0,8)}));
         sMode("confirm");
-      }else{sScanErr("Product not found. Try searching by name or enter manually.");sMode("scan");}
+      }else{sScanErr("Product not found — try searching by name.");sMode("scan");}
     }catch{sScanErr("Network error — check connection.");sMode("scan");}
   };
 
@@ -170,11 +168,10 @@ function Nutrition({data:d,setData:sd,sxp}){
     sProduct(pd);sServingG(String(pd.servingGrams||100));sMode("confirm");
   };
 
-  const calcM=()=>{if(!product)return{calories:0,protein:0,carbs:0,fat:0};const r=parseFloat(servingG)||0;const ratio=r/100;return{calories:Math.round(product.per100.calories*ratio),protein:Math.round(product.per100.protein*ratio*10)/10,carbs:Math.round(product.per100.carbs*ratio*10)/10,fat:Math.round(product.per100.fat*ratio*10)/10};};
+  const calcM=()=>{if(!product)return{calories:0,protein:0,carbs:0,fat:0};const ratio=(parseFloat(servingG)||0)/100;return{calories:Math.round(product.per100.calories*ratio),protein:Math.round(product.per100.protein*ratio*10)/10,carbs:Math.round(product.per100.carbs*ratio*10)/10,fat:Math.round(product.per100.fat*ratio*10)/10};};
 
   const logProduct=()=>{
-    if(!product)return;
-    const m=calcM();
+    if(!product)return;const m=calcM();
     sd({...d,meals:[{id:"m"+Date.now(),name:product.name,brand:product.brand,stores:product.stores,image:product.image,type:mt,servingG:parseFloat(servingG),barcode:product.barcode,...m,date:td()},...(d.meals||[])],xp:d.xp+XP.n});
     sxp(XP.n);sProduct(null);sSearchQ("");sSearchRes([]);sMode("log");
   };
@@ -182,14 +179,33 @@ function Nutrition({data:d,setData:sd,sxp}){
   const addManual=()=>{if(!meal.trim())return;sd({...d,meals:[{id:"m"+Date.now(),name:meal.trim(),type:mt,calories:parseFloat(cal)||0,protein:parseFloat(pro)||0,carbs:parseFloat(carb)||0,fat:parseFloat(fat)||0,date:td()},...(d.meals||[])],xp:d.xp+XP.n});sML("");sCal("");sPro("");sCb("");sFat("");sxp(XP.n);};
 
   const pm=calcM();
-  const hasBD="BarcodeDetector" in window;
   const recent=d.recentScans||[];
-  const BackBtn=({to=()=>sMode("log"),label})=><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}><button onClick={to} style={{background:"none",border:"none",color:C.sb,cursor:"pointer",fontSize:22,lineHeight:1,padding:0}}>←</button><span style={{color:C.tx,fontWeight:700,fontSize:15}}>{label}</span></div>;
+  const tm=(d.meals||[]).filter(m=>m.date===td());
+  const tC=tm.reduce((a,m)=>a+(m.calories||0),0),tP=tm.reduce((a,m)=>a+(m.protein||0),0),tCb=tm.reduce((a,m)=>a+(m.carbs||0),0),tF=tm.reduce((a,m)=>a+(m.fat||0),0);
+  const backBtn=(label,fn)=><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}><button onClick={fn} style={{background:"none",border:"none",color:C.sb,cursor:"pointer",fontSize:22,lineHeight:1,padding:0}}>←</button><span style={{color:C.tx,fontWeight:700,fontSize:15}}>{label}</span></div>;
 
   return <div>
     <SH title="Nutrition" sub="Track meals & macros."/>
 
-    {/* Macro rings */}
+    {/* Macro targets */}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+      <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600}}>DAILY TARGETS</div>
+      <button onClick={()=>{sTgtDraft({calories:String(tgt.calories),protein:String(tgt.protein),carbs:String(tgt.carbs),fat:String(tgt.fat)});sEditMT(!editMT);}} style={{background:"none",border:"none",color:editMT?C.ac:C.sb,cursor:"pointer",fontSize:11,fontWeight:600}}>
+        {editMT?"✕ Cancel":"✎ Edit targets"}
+      </button>
+    </div>
+    {editMT&&<Cd style={{marginBottom:12,background:"rgba(245,158,11,0.04)",borderColor:"rgba(245,158,11,0.15)"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:10}}>
+        {[["Calories","calories","kcal",C.or],["Protein","protein","g",C.gn],["Carbs","carbs","g",C.cy],["Fat","fat","g",C.pp]].map(([l,k,u,c])=>
+          <div key={k}>
+            <div style={{color:c,fontSize:9.5,fontWeight:700,marginBottom:4,letterSpacing:0.5}}>{l.toUpperCase()}</div>
+            <Inp value={tgtDraft[k]} onChange={e=>sTgtDraft({...tgtDraft,[k]:e.target.value})} type="number" placeholder={String(tgt[k])}/>
+            <div style={{color:C.sb,fontSize:9,marginTop:2}}>{u}</div>
+          </div>
+        )}
+      </div>
+      <Bt onClick={()=>{sd({...d,macroTargets:{calories:parseInt(tgtDraft.calories)||2500,protein:parseInt(tgtDraft.protein)||150,carbs:parseInt(tgtDraft.carbs)||300,fat:parseInt(tgtDraft.fat)||80}});sEditMT(false);}}>Save Targets</Bt>
+    </Cd>}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10,marginBottom:18}}>
       {[["CALS",tC,tgt.calories,C.or],["PROTEIN",tP,tgt.protein,C.gn],["CARBS",tCb,tgt.carbs,C.cy],["FAT",tF,tgt.fat,C.pp]].map(([l,v,mx,c])=>
         <Cd key={l} style={{padding:12}}>
@@ -200,12 +216,36 @@ function Nutrition({data:d,setData:sd,sxp}){
       )}
     </div>
 
+    {/* Water tracker */}
+    <Cd style={{marginBottom:18}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:7}}><span style={{fontSize:16}}>💧</span><div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600}}>WATER TODAY</div></div>
+        {editWT
+          ?<div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <Inp value={wtDraft} onChange={e=>sWtDraft(e.target.value)} type="number" style={{width:72,fontSize:12}} placeholder="2500"/>
+            <span style={{color:C.sb,fontSize:10}}>ml</span>
+            <Bt onClick={()=>{sd({...d,waterTarget:parseInt(wtDraft)||2500});sEditWT(false);}}>Save</Bt>
+          </div>
+          :<button onClick={()=>{sWtDraft(String(waterTarget));sEditWT(true);}} style={{background:"none",border:"none",color:C.sb,cursor:"pointer",fontSize:11,fontWeight:600}}>Edit target</button>
+        }
+      </div>
+      <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:6}}>
+        <span style={{color:waterMl>=waterTarget?C.gn:C.cy,fontSize:26,fontWeight:800,fontFamily:"Outfit,sans-serif"}}>{(waterMl/1000).toFixed(2).replace(/\.?0+$/,"")}<span style={{fontSize:13}}>L</span></span>
+        <span style={{color:C.sb,fontSize:13}}>/ {(waterTarget/1000).toFixed(1)}L</span>
+        {waterMl>=waterTarget&&<span style={{color:C.gn,fontSize:11,fontWeight:700,marginLeft:4}}>✓ Goal hit!</span>}
+      </div>
+      <PB val={waterMl} max={waterTarget} col={waterMl>=waterTarget?C.gn:C.cy}/>
+      <div style={{display:"flex",gap:6,marginTop:10}}>
+        {[250,500,750,1000].map(ml=><button key={ml} onClick={()=>addWater(ml)} style={{flex:1,padding:"7px 4px",borderRadius:8,border:"1px solid "+C.bd,background:C.sf,color:C.cy,fontSize:12,fontWeight:700,cursor:"pointer"}}>{ml<1000?"+"+ml+"ml":"+1L"}</button>)}
+        {todayWater.length>0&&<button onClick={undoWater} style={{padding:"7px 12px",borderRadius:8,border:"1px solid "+C.bd,background:C.sf,color:C.sb,fontSize:13,cursor:"pointer",fontWeight:600}} title="Undo last">↩</button>}
+      </div>
+    </Cd>
+
     {/* LOG mode */}
     {mode==="log"&&<>
       <div style={{display:"flex",gap:5,marginBottom:12}}>
         {["Breakfast","Lunch","Dinner","Snack"].map(t=><button key={t} onClick={()=>sMT(t)} style={{flex:1,padding:"7px 4px",borderRadius:8,border:mt===t?"1px solid "+C.ac:"1px solid "+C.bd,background:mt===t?C.ag:C.sf,color:mt===t?C.ac:C.sb,fontSize:11,fontWeight:600,cursor:"pointer"}}>{t}</button>)}
       </div>
-
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
         <button onClick={startScan} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px",borderRadius:12,border:"1px solid "+C.ac,background:C.ag,color:C.ac,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>
           <span style={{fontSize:20}}>📷</span> Scan Barcode
@@ -214,7 +254,6 @@ function Nutrition({data:d,setData:sd,sxp}){
           <span style={{fontSize:20}}>🔍</span> Search Food
         </button>
       </div>
-
       {recent.length>0&&<Cd style={{marginBottom:14}}>
         <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:10}}>RECENT SCANS</div>
         {recent.slice(0,4).map((r,i)=>
@@ -231,7 +270,6 @@ function Nutrition({data:d,setData:sd,sxp}){
           </div>
         )}
       </Cd>}
-
       <Cd>
         <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>MANUAL ENTRY</div>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
@@ -245,7 +283,6 @@ function Nutrition({data:d,setData:sd,sxp}){
           <Bt onClick={addManual}>+</Bt>
         </div>
       </Cd>
-
       {tm.length>0&&<div style={{marginTop:18}}>
         <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:10}}>TODAY'S MEALS</div>
         {tm.map(m=><Cd key={m.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",marginBottom:6}}>
@@ -268,16 +305,15 @@ function Nutrition({data:d,setData:sd,sxp}){
 
     {/* SCAN mode */}
     {mode==="scan"&&<>
-      <BackBtn label="Barcode Scanner" to={()=>{stopCamera();setScanning(false);sMode("log");sScanErr("");}}/>
-      {hasBD&&scanning&&<div style={{position:"relative",borderRadius:16,overflow:"hidden",background:"#000",marginBottom:14,aspectRatio:"4/3",maxHeight:340}}>
+      {backBtn("Barcode Scanner",()=>{stopCamera();sMode("log");sScanErr("");})}
+      <div style={{position:"relative",borderRadius:16,overflow:"hidden",background:"#000",marginBottom:14,aspectRatio:"4/3",maxHeight:340}}>
         <video ref={videoRef} muted playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
-        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,pointerEvents:"none"}}>
+        {scanning&&<div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,pointerEvents:"none"}}>
           <div style={{width:"72%",aspectRatio:"3/1.2",border:"2.5px solid "+C.ac,borderRadius:10,boxShadow:"0 0 0 9999px rgba(0,0,0,0.45)",animation:"pulse 2s ease infinite"}}/>
           <span style={{color:"rgba(255,255,255,0.85)",fontSize:12,fontWeight:600,textShadow:"0 1px 4px rgba(0,0,0,0.9)"}}>Point camera at barcode</span>
-        </div>
-      </div>}
-      {hasBD&&!scanning&&!scanErr&&<Cd style={{textAlign:"center",padding:30,marginBottom:14}}><div style={{color:C.sb,fontSize:13,animation:"pulse 1s infinite"}}>Starting camera...</div></Cd>}
-      {!hasBD&&<Cd style={{marginBottom:14,background:"rgba(245,158,11,0.05)",borderColor:"rgba(245,158,11,0.2)",padding:14}}><div style={{color:C.ac,fontSize:12,fontWeight:700,marginBottom:4}}>⚠ Scanner requires Chrome or Safari 17+</div><div style={{color:C.sb,fontSize:11}}>Enter the barcode number manually below.</div></Cd>}
+        </div>}
+        {!scanning&&!scanErr&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"rgba(255,255,255,0.5)",fontSize:12,animation:"pulse 1s infinite"}}>Starting camera...</div></div>}
+      </div>
       {scanErr&&<Cd style={{marginBottom:14,background:C.rg,borderColor:"rgba(239,68,68,0.2)",padding:12}}><div style={{color:C.rd,fontSize:12,fontWeight:600}}>{scanErr}</div></Cd>}
       <Cd>
         <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>MANUAL BARCODE ENTRY</div>
@@ -297,7 +333,7 @@ function Nutrition({data:d,setData:sd,sxp}){
 
     {/* SEARCH mode */}
     {mode==="search"&&<>
-      <BackBtn label="Search Food Database" to={()=>{sMode("log");sSearchRes([]);sSearchQ("");}}/>
+      {backBtn("Search Food Database",()=>{sMode("log");sSearchRes([]);sSearchQ("");})}
       <Cd style={{marginBottom:14}}>
         <div style={{display:"flex",gap:8}}>
           <Inp value={searchQ} onChange={e=>sSearchQ(e.target.value)} placeholder="e.g. Greek yogurt, chicken breast..." style={{flex:1}} onKeyDown={e=>{if(e.key==="Enter")doSearch();}}/>
@@ -327,7 +363,7 @@ function Nutrition({data:d,setData:sd,sxp}){
 
     {/* CONFIRM mode */}
     {mode==="confirm"&&product&&<>
-      <BackBtn label="Confirm & Log" to={()=>{sMode("log");sProduct(null);}}/>
+      {backBtn("Confirm & Log",()=>{sMode("log");sProduct(null);})}
       <Cd style={{marginBottom:14,background:"linear-gradient(135deg,rgba(245,158,11,0.04),rgba(6,182,212,0.02))"}}>
         <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
           {product.image?<img src={product.image} alt="" style={{width:72,height:72,objectFit:"contain",borderRadius:12,background:"#fff",flexShrink:0}}/>:<div style={{width:72,height:72,borderRadius:12,background:C.mt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,flexShrink:0}}>🍽</div>}
@@ -338,7 +374,6 @@ function Nutrition({data:d,setData:sd,sxp}){
             {product.barcode&&<div style={{color:C.mt,fontSize:10}}>Barcode: {product.barcode}</div>}
           </div>
         </div>
-
         <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>PER 100g</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:18}}>
           {[["Cals",product.per100.calories,C.or,"kcal"],["Protein",product.per100.protein,C.gn,"g"],["Carbs",product.per100.carbs,C.cy,"g"],["Fat",product.per100.fat,C.pp,"g"]].map(([l,v,c,u])=>
@@ -348,7 +383,6 @@ function Nutrition({data:d,setData:sd,sxp}){
             </div>
           )}
         </div>
-
         <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:6}}>SERVING SIZE</div>
         {product.servingSize&&<div style={{color:C.sb,fontSize:11,marginBottom:8}}>Suggested: {product.servingSize}</div>}
         <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
@@ -358,7 +392,6 @@ function Nutrition({data:d,setData:sd,sxp}){
             {[50,100,150,200].map(g=><button key={g} onClick={()=>sServingG(String(g))} style={{padding:"5px 9px",borderRadius:7,border:"1px solid "+(servingG===String(g)?C.ac:C.bd),background:servingG===String(g)?C.ag:C.sf,color:servingG===String(g)?C.ac:C.sb,fontSize:11,cursor:"pointer",fontWeight:600}}>{g}g</button>)}
           </div>
         </div>
-
         <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>FOR {servingG||0}g SERVING</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:18}}>
           {[["Cals",pm.calories,C.or,"kcal"],["Protein",pm.protein,C.gn,"g"],["Carbs",pm.carbs,C.cy,"g"],["Fat",pm.fat,C.pp,"g"]].map(([l,v,c,u])=>
@@ -368,12 +401,10 @@ function Nutrition({data:d,setData:sd,sxp}){
             </div>
           )}
         </div>
-
         <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>MEAL TYPE</div>
         <div style={{display:"flex",gap:5,marginBottom:16}}>
           {["Breakfast","Lunch","Dinner","Snack"].map(t=><button key={t} onClick={()=>sMT(t)} style={{flex:1,padding:"7px 4px",borderRadius:8,border:mt===t?"1px solid "+C.ac:"1px solid "+C.bd,background:mt===t?C.ag:C.sf,color:mt===t?C.ac:C.sb,fontSize:10.5,fontWeight:600,cursor:"pointer"}}>{t}</button>)}
         </div>
-
         <button onClick={logProduct} style={{width:"100%",padding:"13px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"#000",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"Outfit,sans-serif",letterSpacing:0.5}}>
           ✓ Log This Meal
         </button>
@@ -431,7 +462,7 @@ const mobile=useIsMobile();const[sideOpen,setSideOpen]=useState(false);
   useEffect(()=>{if(!isAdmin)return;const check=async()=>{const{data}=await supabase.rpc('get_all_profiles');sPC((data||[]).filter(x=>x.status==="pending").length);};check();const iv=setInterval(check,15000);return()=>clearInterval(iv);},[isAdmin]);
 
   useEffect(()=>{if(!user)return;loadUD(user.id).then(d2=>{
-    if(!d2.goals?.daily)d2.goals={daily:[],weekly:[],monthly:[],yearly:[]};if(!d2.goalArchive)d2.goalArchive=[];if(!d2.meals)d2.meals=[];if(!d2.weightLog)d2.weightLog=[];if(!d2.weightTarget)d2.weightTarget={weight:null,date:null};if(!d2.recentScans)d2.recentScans=[];if(!d2.routine)d2.routine=DD().routine;if(!d2.routineSat)d2.routineSat=[];if(!d2.routineSun)d2.routineSun=[];if(!d2.routineLog)d2.routineLog={};if(!d2.macroTargets)d2.macroTargets={calories:2500,protein:150,carbs:300,fat:80};
+    if(!d2.goals?.daily)d2.goals={daily:[],weekly:[],monthly:[],yearly:[]};if(!d2.goalArchive)d2.goalArchive=[];if(!d2.meals)d2.meals=[];if(!d2.weightLog)d2.weightLog=[];if(!d2.weightTarget)d2.weightTarget={weight:null,date:null};if(!d2.recentScans)d2.recentScans=[];if(!d2.waterLog)d2.waterLog={};if(!d2.waterTarget)d2.waterTarget=2500;if(!d2.routine)d2.routine=DD().routine;if(!d2.routineSat)d2.routineSat=[];if(!d2.routineSun)d2.routineSun=[];if(!d2.routineLog)d2.routineLog={};if(!d2.macroTargets)d2.macroTargets={calories:2500,protein:150,carbs:300,fat:80};
     const today=td(),w=wkk(),m=mkk(),y=ykk();
     if(d2.lastDate&&d2.lastDate!==today){if(d2.goals.daily.length>0){d2.goalArchive=[{id:"a"+Date.now(),type:"daily",date:d2.lastDate,periodLabel:d2.lastDate,goals:d2.goals.daily.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.daily.filter(g=>g.completed).length,total:d2.goals.daily.length},...d2.goalArchive];d2.goals.daily=[];}if(d2.lastWeek!==w&&d2.goals.weekly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+1),type:"weekly",date:today,periodLabel:d2.lastWeek,goals:d2.goals.weekly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.weekly.filter(g=>g.completed).length,total:d2.goals.weekly.length},...d2.goalArchive];d2.goals.weekly=[];}if(d2.lastMonth!==m&&d2.goals.monthly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+2),type:"monthly",date:today,periodLabel:d2.lastMonth,goals:d2.goals.monthly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.monthly.filter(g=>g.completed).length,total:d2.goals.monthly.length},...d2.goalArchive];d2.goals.monthly=[];}if(d2.lastYear!==y&&d2.goals.yearly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+3),type:"yearly",date:today,periodLabel:d2.lastYear,goals:d2.goals.yearly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.yearly.filter(g=>g.completed).length,total:d2.goals.yearly.length},...d2.goalArchive];d2.goals.yearly=[];}const act=d2.habits.filter(h=>h.active),prev=d2.habitLog[d2.lastDate]||[];if(prev.length===act.length&&act.length>0){d2.streak=(d2.streak||0)+1;d2.bestStreak=Math.max(d2.bestStreak||0,d2.streak);}else{const yy=new Date();yy.setDate(yy.getDate()-1);if(d2.lastDate!==yy.toISOString().split("T")[0])d2.streak=0;}d2.lastDate=today;d2.lastWeek=w;d2.lastMonth=m;d2.lastYear=y;}
     saveUD(user.id,d2);sD(d2);sLd(true);
