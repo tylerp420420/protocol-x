@@ -791,10 +791,10 @@ function TradingHub({data:d,setData:sd,onClose}){
           </div>
         </button>;
       })}
-      <div style={{flex:1}}/>
-      <div style={{display:'flex',gap:2}}>
-        {navItems.map(n=><button key={n.id} onClick={()=>sTpg(n.id)} style={{padding:'8px 14px',borderRadius:6,border:'none',background:tpg===n.id?sc.g:'transparent',color:tpg===n.id?sc.c:TH.sb,fontSize:10,fontWeight:tpg===n.id?900:500,cursor:'pointer',letterSpacing:1.2,fontFamily:'Outfit,sans-serif',transition:'all 0.12s'}}>{n.l}</button>)}
-      </div>
+    </div>
+    {/* NAV BAR — centred */}
+    <div style={{display:'flex',justifyContent:'center',gap:4,padding:'10px 28px',borderBottom:'1px solid rgba(255,255,255,0.06)',background:TH.hd,flexShrink:0}}>
+      {navItems.map(n=><button key={n.id} onClick={()=>sTpg(n.id)} style={{padding:'9px 20px',borderRadius:6,border:tpg===n.id?'1px solid '+sc.c:'1px solid transparent',background:tpg===n.id?sc.g:'transparent',color:tpg===n.id?sc.c:TH.sb,fontSize:11,fontWeight:tpg===n.id?900:500,cursor:'pointer',letterSpacing:1.2,fontFamily:'Outfit,sans-serif',transition:'all 0.12s'}}>{n.l}</button>)}
     </div>
 
     {/* CONTENT */}
