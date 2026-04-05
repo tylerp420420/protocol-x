@@ -84,13 +84,243 @@ const GT=[{k:"daily",l:"Daily",c:C.cy,xp:XP.dg},{k:"weekly",l:"Weekly",c:C.ac,xp
 function Goals({data:d,setData:sd,sxp}){const[tab,sT]=useState("daily"),[ng,sng]=useState(""),[sa,ssa]=useState(false);const ti=GT.find(t=>t.k===tab),gs=d.goals[tab]||[],aG=gs.filter(g=>!g.completed),dG=gs.filter(g=>g.completed),arcs=d.goalArchive.filter(a=>a.type===tab);const addG=()=>{if(!ng.trim())return;sd({...d,goals:{...d.goals,[tab]:[...gs,{id:"g"+Date.now(),name:ng.trim(),completed:false}]}});sng("");};const togG=id=>{const up=gs.map(g=>g.id===id?{...g,completed:!g.completed}:g);const gl=gs.find(g=>g.id===id);const xd=gl.completed?-ti.xp:ti.xp;sd({...d,goals:{...d.goals,[tab]:up},xp:Math.max(0,d.xp+xd)});if(xd>0)sxp(xd);};const delG=id=>{const g=gs.find(x=>x.id===id);sd({...d,goals:{...d.goals,[tab]:gs.filter(x=>x.id!==id)},xp:g&&g.completed?Math.max(0,d.xp-ti.xp):d.xp});};const arcG=()=>{if(!gs.length)return;sd({...d,goals:{...d.goals,[tab]:[]},goalArchive:[{id:"a"+Date.now(),type:tab,date:td(),periodLabel:tab==="daily"?td():tab==="weekly"?wkk():tab==="monthly"?mkk():ykk(),goals:gs.map(g=>({name:g.name,completed:g.completed})),totalCompleted:dG.length,total:gs.length},...d.goalArchive]});};return <div><SH title="Goals"/><div style={{display:"flex",gap:5,marginBottom:18}}>{GT.map(t=>{const cnt=(d.goals[t.k]||[]).filter(g=>!g.completed).length;return <button key={t.k} onClick={()=>{sT(t.k);ssa(false);}} style={{flex:1,padding:"10px",borderRadius:11,border:tab===t.k?"1px solid "+t.c:"1px solid "+C.bd,background:tab===t.k?t.c+"15":C.cd,color:tab===t.k?t.c:C.sb,fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>{t.l}{cnt>0&&<span style={{marginLeft:5,background:t.c+"25",color:t.c,padding:"1px 6px",borderRadius:5,fontSize:10}}>{cnt}</span>}</button>})}</div><Cd style={{marginBottom:14}}><div style={{display:"flex",gap:10}}><Inp value={ng} onChange={e=>sng(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addG();}} placeholder={"Add "+ti.l.toLowerCase()+" goal..."} style={{flex:1}}/><Bt onClick={addG}>+ Add</Bt></div></Cd>{aG.map(g=><Cd key={g.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 18px",marginBottom:6}}><div style={{display:"flex",alignItems:"center",gap:12}}><button onClick={()=>togG(g.id)} style={{width:24,height:24,borderRadius:7,border:"2px solid "+C.mt,background:"transparent",cursor:"pointer"}}/><span style={{color:C.tx,fontSize:13.5,fontWeight:600}}>{g.name}</span></div><div style={{display:"flex",gap:6,alignItems:"center"}}><span style={{color:ti.c,fontSize:11,fontWeight:700}}>+{ti.xp}</span><button onClick={()=>delG(g.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.mt,fontSize:15}}>×</button></div></Cd>)}{dG.map(g=><Cd key={g.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 18px",marginBottom:5,opacity:0.5}}><div style={{display:"flex",alignItems:"center",gap:12}}><div onClick={()=>togG(g.id)} style={{width:24,height:24,borderRadius:7,background:"linear-gradient(135deg,#10b981,#059669)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><span style={{color:"#fff",fontWeight:900,fontSize:11}}>✓</span></div><span style={{color:C.tx,fontSize:13,textDecoration:"line-through"}}>{g.name}</span></div><button onClick={()=>delG(g.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.mt,fontSize:15}}>×</button></Cd>)}{gs.length>0&&<Bt v="secondary" onClick={arcG} style={{width:"100%",justifyContent:"center",marginTop:10}}>📦 Archive & Reset</Bt>}<button onClick={()=>ssa(!sa)} style={{background:"none",border:"none",color:C.sb,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"Outfit,sans-serif",padding:"10px 0"}}>{sa?"▲":"▼"} ARCHIVE ({arcs.length})</button>{sa&&arcs.map(a=><Cd key={a.id} style={{padding:"12px 18px",marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:C.tx,fontSize:13,fontWeight:700}}>{a.periodLabel}</span><span style={{color:a.totalCompleted===a.total?C.gn:C.ac,fontWeight:800}}>{a.totalCompleted}/{a.total}</span></div>{a.goals.map((g,i)=><div key={i} style={{display:"flex",gap:8,padding:"3px 0"}}><span style={{color:g.completed?C.gn:C.rd}}>{g.completed?"✓":"✗"}</span><span style={{color:g.completed?C.tx:C.sb,fontSize:12,textDecoration:g.completed?"none":"line-through"}}>{g.name}</span></div>)}</Cd>)}</div>;}
 
 // JOURNAL
-function Journal({data:d,setData:sd,sxp}){const[type,sType]=useState("morning"),[wins,sW]=useState(""),[lessons,sL]=useState(""),[grat,sGr]=useState(""),[focus,sF]=useState(""),[free,sFr]=useState(""),[mind,sM]=useState(7),[eng,sE]=useState(7),[tag,sTg]=useState("Mindset"),[sel,sS]=useState(null),[filt,sFi]=useState("all");const add=()=>{if(!wins.trim()&&!lessons.trim()&&!grat.trim()&&!focus.trim()&&!free.trim())return;const j={id:"j"+Date.now(),type,wins:wins.trim(),lessons:lessons.trim(),gratitude:grat.trim(),focus:focus.trim(),freeform:free.trim(),mindset:mind,energy:eng,tag,date:td(),time:new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})};sd({...d,journal:[j,...d.journal],xp:d.xp+XP.j});sW("");sL("");sGr("");sF("");sFr("");sM(7);sE(7);sxp(XP.j);};const del=id=>{sd({...d,journal:d.journal.filter(j=>j.id!==id)});if(sel===id)sS(null);};const s=d.journal.find(j=>j.id===sel);const filtered=filt==="all"?d.journal:d.journal.filter(j=>j.tag===filt);const mp=type==="morning";const ts={width:"100%",background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"9px 11px",color:C.tx,fontSize:12.5,outline:"none",resize:"none",fontFamily:"Plus Jakarta Sans,sans-serif",boxSizing:"border-box"};
-  return <div><SH title="Journal" sub="Structured reflection."/><div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:16}}><div><Cd style={{marginBottom:14}}><div style={{display:"flex",gap:6,marginBottom:12}}>{["morning","evening"].map(t=><button key={t} onClick={()=>sType(t)} style={{flex:1,padding:"8px",borderRadius:10,border:type===t?"1px solid "+(t==="morning"?C.ac:C.cy):"1px solid "+C.bd,background:type===t?(t==="morning"?C.ag:C.cg):C.sf,color:type===t?(t==="morning"?C.ac:C.cy):C.sb,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>{t==="morning"?"☀ Morning":"☽ Evening"}</button>)}</div><div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>{JTAGS.map(t=><button key={t} onClick={()=>sTg(t)} style={{padding:"4px 9px",borderRadius:6,border:tag===t?"1px solid "+C.ac:"1px solid "+C.bd,background:tag===t?C.ag:C.sf,color:tag===t?C.ac:C.sb,fontSize:10.5,fontWeight:600,cursor:"pointer"}}>{t}</button>)}</div><div style={{display:"flex",gap:12,marginBottom:12}}><div style={{flex:1}}><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:4}}>MINDSET <span style={{color:C.ac}}>{mind}/10</span></div><input type="range" min="1" max="10" value={mind} onChange={e=>sM(+e.target.value)} style={{width:"100%",accentColor:C.ac}}/></div><div style={{flex:1}}><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:4}}>ENERGY <span style={{color:C.cy}}>{eng}/10</span></div><input type="range" min="1" max="10" value={eng} onChange={e=>sE(+e.target.value)} style={{width:"100%",accentColor:C.cy}}/></div></div>
-  {mp?<><div style={{marginBottom:8}}><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:3}}>🎯 TODAY'S FOCUS</div><textarea value={focus} onChange={e=>sF(e.target.value)} placeholder="Your #1 priority today?" rows={2} style={ts}/></div><div style={{marginBottom:8}}><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:3}}>🙏 GRATITUDE</div><textarea value={grat} onChange={e=>sGr(e.target.value)} placeholder="3 things you're grateful for..." rows={2} style={ts}/></div></>
-  :<><div style={{marginBottom:8}}><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:3}}>🏆 WINS</div><textarea value={wins} onChange={e=>sW(e.target.value)} placeholder="What went well?" rows={2} style={ts}/></div><div style={{marginBottom:8}}><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:3}}>📝 LESSONS</div><textarea value={lessons} onChange={e=>sL(e.target.value)} placeholder="What did you learn?" rows={2} style={ts}/></div><div style={{marginBottom:8}}><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:3}}>🔮 TOMORROW</div><textarea value={focus} onChange={e=>sF(e.target.value)} placeholder="Top priority tomorrow..." rows={2} style={ts}/></div></>}
-  <div style={{marginBottom:8}}><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:3}}>💭 FREE</div><textarea value={free} onChange={e=>sFr(e.target.value)} placeholder="Anything else..." rows={2} style={ts}/></div>
-  <Bt onClick={add} style={{width:"100%",justifyContent:"center"}}>Save (+{XP.j} XP)</Bt></Cd></div>
-  <div><div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}><button onClick={()=>sFi("all")} style={{padding:"3px 8px",borderRadius:5,border:filt==="all"?"1px solid "+C.ac:"1px solid "+C.bd,background:filt==="all"?C.ag:C.sf,color:filt==="all"?C.ac:C.sb,fontSize:10,fontWeight:600,cursor:"pointer"}}>All</button>{JTAGS.map(t=><button key={t} onClick={()=>sFi(t)} style={{padding:"3px 7px",borderRadius:5,border:filt===t?"1px solid "+C.ac:"1px solid "+C.bd,background:filt===t?C.ag:C.sf,color:filt===t?C.ac:C.sb,fontSize:10,fontWeight:600,cursor:"pointer"}}>{t}</button>)}</div><div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:500,overflowY:"auto"}}>{filtered.map(j=><Cd key={j.id} onClick={()=>sS(j.id===sel?null:j.id)} style={{padding:"11px 14px",cursor:"pointer",borderColor:sel===j.id?C.ac:C.bd,background:sel===j.id?C.ag:C.cd}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><div style={{display:"flex",gap:5}}><span style={{color:j.type==="morning"?C.ac:C.cy,fontSize:10.5,fontWeight:700}}>{j.type==="morning"?"☀":"☽"}</span><span style={{background:C.sf,color:C.sb,padding:"1px 5px",borderRadius:4,fontSize:9.5}}>{j.tag}</span></div><span style={{color:C.sb,fontSize:10.5}}>{j.date}</span></div><div style={{display:"flex",gap:6}}><span style={{color:C.ac,fontSize:10}}>M:{j.mindset}/10</span><span style={{color:C.cy,fontSize:10}}>E:{j.energy}/10</span></div>{sel===j.id&&<div style={{marginTop:8,borderTop:"1px solid "+C.bd,paddingTop:8}}>{j.wins&&<div style={{marginBottom:6}}><div style={{color:C.ac,fontSize:9.5,fontWeight:700}}>WINS</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.wins}</div></div>}{j.lessons&&<div style={{marginBottom:6}}><div style={{color:C.cy,fontSize:9.5,fontWeight:700}}>LESSONS</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.lessons}</div></div>}{j.gratitude&&<div style={{marginBottom:6}}><div style={{color:C.gn,fontSize:9.5,fontWeight:700}}>GRATITUDE</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.gratitude}</div></div>}{j.focus&&<div style={{marginBottom:6}}><div style={{color:C.pp,fontSize:9.5,fontWeight:700}}>FOCUS</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.focus}</div></div>}{j.freeform&&<div style={{marginBottom:6}}><div style={{color:C.sb,fontSize:9.5,fontWeight:700}}>THOUGHTS</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.freeform}</div></div>}<button onClick={e=>{e.stopPropagation();del(j.id);}} style={{background:C.rg,border:"none",borderRadius:6,padding:"4px 10px",color:C.rd,cursor:"pointer",fontSize:10.5,fontWeight:600}}>Delete</button></div>}</Cd>)}</div></div></div></div>;}
+function Journal({data:d,setData:sd,sxp}){
+  const[jMode,sJMode]=useState("calendar");
+  const[calYear,sCalYear]=useState(new Date().getFullYear());
+  const[calMonth,sCalMonth]=useState(new Date().getMonth());
+  const[selDate,sSelDate]=useState(null);
+  const[searchQ,sSearchQ]=useState("");
+  const[editId,sEditId]=useState(null);
+  const[wType,sWT]=useState("morning");
+  const[wWins,sWW]=useState(""),[wLessons,sWL]=useState(""),[wGrat,sWG]=useState(""),[wFocus,sWF]=useState(""),[wFree,sWFr]=useState(""),[wMind,sWM]=useState(7),[wEng,sWE]=useState(7),[wTag,sWTg]=useState("Mindset");
+
+  const fmtD=dt=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+  const mCol=s=>s>=8?C.gn:s>=6?C.ac:s>=4?C.or:C.rd;
+  const allEntries=d.journal||[];
+  const entryDates=[...new Set(allEntries.map(j=>j.date))].sort();
+
+  // Stats
+  const streak=(()=>{let s=0,now=new Date();for(let i=0;i<365;i++){const ds=fmtD(new Date(now.getFullYear(),now.getMonth(),now.getDate()-i));if(allEntries.some(j=>j.date===ds))s++;else break;}return s;})();
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+  const last30=allEntries.filter(j=>new Date(j.date+"T12:00:00")>=cutoff);
+  const avg30=last30.length?(last30.reduce((a,j)=>a+j.mindset,0)/last30.length).toFixed(1):"--";
+  const prev30Cut=new Date(cutoff.getTime()-30*86400000);
+  const prev30=allEntries.filter(j=>{const dt=new Date(j.date+"T12:00:00");return dt<cutoff&&dt>=prev30Cut;});
+  const prevAvg=prev30.length?prev30.reduce((a,j)=>a+j.mindset,0)/prev30.length:null;
+  const trend=prevAvg?(parseFloat(avg30)>prevAvg?"↑":parseFloat(avg30)<prevAvg?"↓":"→"):"";
+  const trendCol=trend==="↑"?C.gn:trend==="↓"?C.rd:C.sb;
+  const tagC={};last30.forEach(j=>{tagC[j.tag]=(tagC[j.tag]||0)+1;});
+  const topTag=Object.entries(tagC).sort((a,b)=>b[1]-a[1])[0]?.[0]||"--";
+
+  // Calendar
+  const calDays=()=>{const first=new Date(calYear,calMonth,1);const last=new Date(calYear,calMonth+1,0);const startDow=(first.getDay()+6)%7;const days=Array(startDow).fill(null);for(let i=1;i<=last.getDate();i++)days.push(new Date(calYear,calMonth,i));return days;};
+  const monthEntries=allEntries.filter(j=>{const[y,m]=j.date.split("-");return +y===calYear&&+m-1===calMonth;});
+  const monthAvg=monthEntries.length?(monthEntries.reduce((a,j)=>a+j.mindset,0)/monthEntries.length).toFixed(1):null;
+  const mTagC={};monthEntries.forEach(j=>{mTagC[j.tag]=(mTagC[j.tag]||0)+1;});
+  const monthTopTag=Object.entries(mTagC).sort((a,b)=>b[1]-a[1])[0]?.[0]||null;
+
+  // Entry view
+  const selEntries=selDate?allEntries.filter(j=>j.date===selDate):[];
+  const selIdx=selDate?entryDates.indexOf(selDate):-1;
+  const prevED=selIdx>0?entryDates[selIdx-1]:null;
+  const nextED=selIdx<entryDates.length-1?entryDates[selIdx+1]:null;
+
+  // Search
+  const searchRes=searchQ.trim().length>1?allEntries.filter(j=>[j.wins,j.lessons,j.gratitude,j.focus,j.freeform].some(f=>f?.toLowerCase().includes(searchQ.toLowerCase()))):[];
+
+  const clearForm=()=>{sWW("");sWL("");sWG("");sWF("");sWFr("");sWM(7);sWE(7);sWTg("Mindset");};
+  const openWrite=(date,type)=>{sSelDate(date);sWT(type||(new Date().getHours()<14?"morning":"evening"));sEditId(null);clearForm();sJMode("write");};
+  const openEdit=e=>{sSelDate(e.date);sWT(e.type);sEditId(e.id);sWW(e.wins||"");sWL(e.lessons||"");sWG(e.gratitude||"");sWF(e.focus||"");sWFr(e.freeform||"");sWM(e.mindset||7);sWE(e.energy||7);sWTg(e.tag||"Mindset");sJMode("write");};
+  const saveEntry=()=>{
+    if(!wWins.trim()&&!wLessons.trim()&&!wGrat.trim()&&!wFocus.trim()&&!wFree.trim())return;
+    const entry={id:editId||"j"+Date.now(),type:wType,wins:wWins.trim(),lessons:wLessons.trim(),gratitude:wGrat.trim(),focus:wFocus.trim(),freeform:wFree.trim(),mindset:wMind,energy:wEng,tag:wTag,date:selDate||td(),time:new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})};
+    if(editId){sd({...d,journal:d.journal.map(j=>j.id===editId?entry:j)});}
+    else{sd({...d,journal:[entry,...d.journal],xp:d.xp+XP.j});sxp(XP.j);}
+    clearForm();sEditId(null);sJMode(selDate?"entry":"calendar");
+  };
+  const delEntry=id=>{sd({...d,journal:d.journal.filter(j=>j.id!==id)});};
+
+  const ts={width:"100%",background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"9px 11px",color:C.tx,fontSize:12.5,outline:"none",resize:"none",fontFamily:"Plus Jakarta Sans,sans-serif",boxSizing:"border-box"};
+  const days=calDays();
+  const DOWL=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const MNS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  return <div>
+    <SH title="Journal" sub="Structured reflection."/>
+
+    {/* Stats bar */}
+    {jMode!=="write"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10,marginBottom:16}}>
+      <Cd style={{padding:12}}><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:600,marginBottom:3}}>STREAK</div><div style={{color:C.ac,fontSize:22,fontWeight:800,fontFamily:"Outfit,sans-serif",lineHeight:1}}>{streak}<span style={{fontSize:10,color:C.sb}}> days</span></div></Cd>
+      <Cd style={{padding:12}}><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:600,marginBottom:3}}>ENTRIES</div><div style={{color:C.tx,fontSize:22,fontWeight:800,fontFamily:"Outfit,sans-serif",lineHeight:1}}>{allEntries.length}</div></Cd>
+      <Cd style={{padding:12}}><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:600,marginBottom:3}}>30D MINDSET</div><div style={{display:"flex",alignItems:"baseline",gap:4}}><span style={{color:avg30!=="--"?mCol(parseFloat(avg30)):C.sb,fontSize:22,fontWeight:800,fontFamily:"Outfit,sans-serif",lineHeight:1}}>{avg30}</span><span style={{color:trendCol,fontSize:14,fontWeight:700}}>{trend}</span></div></Cd>
+      <Cd style={{padding:12}}><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:600,marginBottom:3}}>TOP TAG</div><div style={{color:C.cy,fontSize:13,fontWeight:800,fontFamily:"Outfit,sans-serif",lineHeight:1.3,marginTop:2}}>{topTag}</div></Cd>
+    </div>}
+
+    {/* Mode tabs */}
+    {jMode!=="write"&&<div style={{display:"flex",gap:6,marginBottom:16}}>
+      <button onClick={()=>sJMode("calendar")} style={{flex:1,padding:"8px",borderRadius:9,border:jMode==="calendar"?"1px solid "+C.ac:"1px solid "+C.bd,background:jMode==="calendar"?C.ag:C.sf,color:jMode==="calendar"?C.ac:C.sb,fontSize:12,fontWeight:700,cursor:"pointer"}}>📅 Calendar</button>
+      <button onClick={()=>sJMode("search")} style={{flex:1,padding:"8px",borderRadius:9,border:jMode==="search"?"1px solid "+C.cy:"1px solid "+C.bd,background:jMode==="search"?C.cg:C.sf,color:jMode==="search"?C.cy:C.sb,fontSize:12,fontWeight:700,cursor:"pointer"}}>🔍 Search</button>
+      <button onClick={()=>openWrite(td())} style={{flex:1,padding:"8px",borderRadius:9,border:"1px solid "+C.gn,background:C.gg,color:C.gn,fontSize:12,fontWeight:700,cursor:"pointer"}}>✎ Write Today</button>
+    </div>}
+
+    {/* CALENDAR VIEW */}
+    {jMode==="calendar"&&<>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+        <button onClick={()=>{if(calMonth===0){sCalMonth(11);sCalYear(calYear-1);}else sCalMonth(calMonth-1);}} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 14px",color:C.tx,cursor:"pointer",fontSize:16,lineHeight:1}}>‹</button>
+        <div style={{textAlign:"center"}}>
+          <div style={{color:C.tx,fontSize:15,fontWeight:700,fontFamily:"Outfit,sans-serif"}}>{MNS[calMonth]} {calYear}</div>
+          {monthEntries.length>0&&<div style={{color:C.sb,fontSize:10.5,marginTop:2}}>
+            {monthEntries.length} {monthEntries.length===1?"entry":"entries"}
+            {monthAvg&&<span style={{color:mCol(parseFloat(monthAvg)),fontWeight:700}}> · {monthAvg} mindset</span>}
+            {monthTopTag&&<span style={{color:C.mt}}> · #{monthTopTag}</span>}
+          </div>}
+          {monthEntries.length===0&&<div style={{color:C.mt,fontSize:10.5,marginTop:2}}>No entries this month</div>}
+        </div>
+        <button onClick={()=>{if(calMonth===11){sCalMonth(0);sCalYear(calYear+1);}else sCalMonth(calMonth+1);}} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 14px",color:C.tx,cursor:"pointer",fontSize:16,lineHeight:1}}>›</button>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}}>
+        {DOWL.map(l=><div key={l} style={{textAlign:"center",color:C.mt,fontSize:9,fontWeight:700,letterSpacing:0.5,padding:"3px 0"}}>{l}</div>)}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:14}}>
+        {days.map((day,i)=>{
+          if(!day)return <div key={"e"+i}/>;
+          const ds=fmtD(day);
+          const de=allEntries.filter(j=>j.date===ds);
+          const avgM=de.length?Math.round(de.reduce((a,e)=>a+e.mindset,0)/de.length):0;
+          const dc=de.length?mCol(avgM):null;
+          const isToday=ds===td();
+          const isFuture=day>new Date()&&ds!==td();
+          const hasMorn=de.some(j=>j.type==="morning");
+          const hasEve=de.some(j=>j.type==="evening");
+          return <div key={ds} onClick={()=>{if(!isFuture){sSelDate(ds);sJMode(de.length?"entry":"write");}}}
+            style={{aspectRatio:"1",borderRadius:8,cursor:isFuture?"default":"pointer",background:de.length?dc+"22":"transparent",border:isToday?"2px solid "+C.ac+"bb":"1px solid "+(de.length?dc+"35":C.bd+"35"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,padding:2,opacity:isFuture?0.2:1}}>
+            <div style={{color:isToday?C.ac:de.length?dc:C.sb,fontSize:11,fontWeight:isToday?900:de.length?700:400,lineHeight:1}}>{day.getDate()}</div>
+            {de.length>0&&<div style={{display:"flex",gap:2,marginTop:1}}>
+              {hasMorn&&<div style={{width:4,height:4,borderRadius:"50%",background:C.ac}}/>}
+              {hasEve&&<div style={{width:4,height:4,borderRadius:"50%",background:C.cy}}/>}
+            </div>}
+            {de.length>0&&<div style={{color:dc,fontSize:7,fontWeight:800,lineHeight:1,marginTop:1}}>{avgM}</div>}
+          </div>;
+        })}
+      </div>
+
+      <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:4}}>
+        {[[C.gn,"8–10"],[C.ac,"6–7"],[C.or,"4–5"],[C.rd,"1–3"]].map(([c,l])=>
+          <div key={l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:c+"35",border:"1px solid "+c}}/><span style={{color:C.sb,fontSize:9}}>Mindset {l}</span></div>
+        )}
+        <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:5,height:5,borderRadius:"50%",background:C.ac}}/><span style={{color:C.sb,fontSize:9}}>AM</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:5,height:5,borderRadius:"50%",background:C.cy}}/><span style={{color:C.sb,fontSize:9}}>PM</span></div>
+      </div>
+    </>}
+
+    {/* ENTRY VIEW */}
+    {jMode==="entry"&&selDate&&<>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <button onClick={()=>sJMode("calendar")} style={{background:"none",border:"none",color:C.sb,cursor:"pointer",fontSize:22,padding:0,lineHeight:1}}>←</button>
+        <div style={{textAlign:"center",flex:1,padding:"0 10px"}}>
+          <div style={{color:C.tx,fontWeight:700,fontSize:13.5}}>{new Date(selDate+"T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+          <div style={{color:C.sb,fontSize:10.5,marginTop:1}}>{selEntries.length===0?"No entries":`${selEntries.length} ${selEntries.length===1?"entry":"entries"}`}</div>
+        </div>
+        <div style={{display:"flex",gap:5}}>
+          <button onClick={()=>{if(prevED)sSelDate(prevED);}} disabled={!prevED} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:7,padding:"5px 11px",color:prevED?C.tx:C.mt,cursor:prevED?"pointer":"default",fontSize:14,lineHeight:1}}>‹</button>
+          <button onClick={()=>{if(nextED)sSelDate(nextED);}} disabled={!nextED} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:7,padding:"5px 11px",color:nextED?C.tx:C.mt,cursor:nextED?"pointer":"default",fontSize:14,lineHeight:1}}>›</button>
+        </div>
+      </div>
+
+      {selEntries.length===0
+        ?<Cd style={{textAlign:"center",padding:32}}><div style={{color:C.sb,fontSize:13,marginBottom:14}}>No entries for this day.</div><Bt onClick={()=>openWrite(selDate)}>+ Write Entry</Bt></Cd>
+        :selEntries.map(e=>{
+          const isMorn=e.type==="morning";const mc=mCol(e.mindset);const ec=mCol(e.energy);
+          return <Cd key={e.id} style={{marginBottom:12,borderColor:isMorn?"rgba(245,158,11,0.25)":"rgba(6,182,212,0.25)",background:isMorn?"rgba(245,158,11,0.03)":"rgba(6,182,212,0.03)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:15}}>{isMorn?"☀":"☽"}</span>
+                <span style={{color:isMorn?C.ac:C.cy,fontSize:13,fontWeight:700,fontFamily:"Outfit,sans-serif"}}>{isMorn?"Morning":"Evening"}</span>
+                <span style={{background:C.sf,color:C.sb,padding:"2px 7px",borderRadius:5,fontSize:9.5,fontWeight:600}}>{e.tag}</span>
+              </div>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                {e.time&&<span style={{color:C.mt,fontSize:10}}>{e.time}</span>}
+                <button onClick={()=>openEdit(e)} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:6,padding:"3px 8px",color:C.sb,cursor:"pointer",fontSize:10.5,fontWeight:600}}>Edit</button>
+                <button onClick={()=>{delEntry(e.id);if(selEntries.length===1)sJMode("calendar");}} style={{background:C.rg,border:"none",borderRadius:6,padding:"3px 8px",color:C.rd,cursor:"pointer",fontSize:10.5,fontWeight:600}}>Del</button>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              {[["MINDSET",e.mindset,mc],["ENERGY",e.energy,ec]].map(([l,v,c])=>
+                <div key={l}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:C.sb,fontSize:9,fontWeight:700,letterSpacing:1}}>{l}</span><span style={{color:c,fontSize:11,fontWeight:800}}>{v}/10</span></div><div style={{height:5,background:C.sf,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:(v/10*100)+"%",background:c,borderRadius:3}}/></div></div>
+              )}
+            </div>
+            {[[e.focus,"🎯","FOCUS / PRIORITY",C.ac],[e.gratitude,"🙏","GRATITUDE",C.gn],[e.wins,"🏆","WINS",C.ac],[e.lessons,"📝","LESSONS",C.cy],[e.freeform,"💭","THOUGHTS",C.sb]].filter(([v])=>v).map(([v,em,l,c])=>
+              <div key={l} style={{marginBottom:10}}><div style={{color:c,fontSize:8.5,fontWeight:700,letterSpacing:1.5,marginBottom:4}}>{em} {l}</div><div style={{color:C.tx,fontSize:13,lineHeight:1.65,whiteSpace:"pre-wrap"}}>{v}</div></div>
+            )}
+          </Cd>;
+        })
+      }
+      <Bt v="secondary" onClick={()=>openWrite(selDate)} style={{width:"100%",justifyContent:"center",marginTop:4}}>+ Add Entry for This Day</Bt>
+    </>}
+
+    {/* WRITE VIEW */}
+    {jMode==="write"&&<>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+        <button onClick={()=>{sJMode(selEntries.length||editId?"entry":"calendar");clearForm();sEditId(null);}} style={{background:"none",border:"none",color:C.sb,cursor:"pointer",fontSize:22,padding:0,lineHeight:1}}>←</button>
+        <div><div style={{color:C.tx,fontWeight:700,fontSize:14}}>{editId?"Edit Entry":"New Entry"}</div><div style={{color:C.sb,fontSize:11}}>{selDate&&new Date(selDate+"T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</div></div>
+      </div>
+      <Cd>
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {["morning","evening"].map(t=><button key={t} onClick={()=>sWT(t)} style={{flex:1,padding:"9px",borderRadius:10,border:wType===t?"1px solid "+(t==="morning"?C.ac:C.cy):"1px solid "+C.bd,background:wType===t?(t==="morning"?C.ag:C.cg):C.sf,color:wType===t?(t==="morning"?C.ac:C.cy):C.sb,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>{t==="morning"?"☀ Morning":"☽ Evening"}</button>)}
+        </div>
+        <div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap"}}>
+          {JTAGS.map(t=><button key={t} onClick={()=>sWTg(t)} style={{padding:"4px 9px",borderRadius:6,border:wTag===t?"1px solid "+C.ac:"1px solid "+C.bd,background:wTag===t?C.ag:C.sf,color:wTag===t?C.ac:C.sb,fontSize:10.5,fontWeight:600,cursor:"pointer"}}>{t}</button>)}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+          <div><div style={{color:C.sb,fontSize:9.5,fontWeight:600,marginBottom:4}}>MINDSET <span style={{color:mCol(wMind),fontWeight:800}}>{wMind}/10</span></div><input type="range" min="1" max="10" value={wMind} onChange={e=>sWM(+e.target.value)} style={{width:"100%",accentColor:mCol(wMind)}}/></div>
+          <div><div style={{color:C.sb,fontSize:9.5,fontWeight:600,marginBottom:4}}>ENERGY <span style={{color:mCol(wEng),fontWeight:800}}>{wEng}/10</span></div><input type="range" min="1" max="10" value={wEng} onChange={e=>sWE(+e.target.value)} style={{width:"100%",accentColor:mCol(wEng)}}/></div>
+        </div>
+        {wType==="morning"&&<>
+          <div style={{marginBottom:10}}><div style={{color:C.sb,fontSize:9.5,fontWeight:700,letterSpacing:1,marginBottom:4}}>🎯 TODAY'S FOCUS</div><textarea value={wFocus} onChange={e=>sWF(e.target.value)} placeholder="Your #1 priority today?" rows={2} style={ts}/></div>
+          <div style={{marginBottom:10}}><div style={{color:C.sb,fontSize:9.5,fontWeight:700,letterSpacing:1,marginBottom:4}}>🙏 GRATITUDE</div><textarea value={wGrat} onChange={e=>sWG(e.target.value)} placeholder="3 things you're grateful for..." rows={2} style={ts}/></div>
+        </>}
+        {wType==="evening"&&<>
+          <div style={{marginBottom:10}}><div style={{color:C.sb,fontSize:9.5,fontWeight:700,letterSpacing:1,marginBottom:4}}>🏆 WINS</div><textarea value={wWins} onChange={e=>sWW(e.target.value)} placeholder="What went well today?" rows={2} style={ts}/></div>
+          <div style={{marginBottom:10}}><div style={{color:C.sb,fontSize:9.5,fontWeight:700,letterSpacing:1,marginBottom:4}}>📝 LESSONS</div><textarea value={wLessons} onChange={e=>sWL(e.target.value)} placeholder="What did you learn?" rows={2} style={ts}/></div>
+          <div style={{marginBottom:10}}><div style={{color:C.sb,fontSize:9.5,fontWeight:700,letterSpacing:1,marginBottom:4}}>🔮 TOMORROW'S FOCUS</div><textarea value={wFocus} onChange={e=>sWF(e.target.value)} placeholder="Top priority tomorrow..." rows={2} style={ts}/></div>
+        </>}
+        <div style={{marginBottom:14}}><div style={{color:C.sb,fontSize:9.5,fontWeight:700,letterSpacing:1,marginBottom:4}}>💭 FREE THOUGHTS</div><textarea value={wFree} onChange={e=>sWFr(e.target.value)} placeholder="Stream of consciousness..." rows={3} style={ts}/></div>
+        <button onClick={saveEntry} style={{width:"100%",padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"#000",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>
+          {editId?"Save Changes ✓":"Save Entry (+"+XP.j+" XP)"}
+        </button>
+      </Cd>
+    </>}
+
+    {/* SEARCH VIEW */}
+    {jMode==="search"&&<>
+      <Cd style={{marginBottom:14}}>
+        <Inp value={searchQ} onChange={e=>sSearchQ(e.target.value)} placeholder="Search wins, lessons, thoughts, gratitude..." style={{width:"100%"}}/>
+      </Cd>
+      {searchQ.trim().length>1&&searchRes.length===0&&<div style={{textAlign:"center",padding:28,color:C.sb,fontSize:12}}>No entries match "{searchQ}"</div>}
+      {searchRes.map(j=>{
+        const mc=mCol(j.mindset);
+        const preview=[j.wins,j.lessons,j.gratitude,j.focus,j.freeform].filter(Boolean).join(" · ");
+        return <Cd key={j.id} onClick={()=>{sSelDate(j.date);sJMode("entry");}} style={{marginBottom:8,cursor:"pointer"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <span style={{fontSize:13}}>{j.type==="morning"?"☀":"☽"}</span>
+              <span style={{color:j.type==="morning"?C.ac:C.cy,fontSize:11,fontWeight:700}}>{j.type==="morning"?"Morning":"Evening"}</span>
+              <span style={{background:C.sf,color:C.sb,padding:"1px 6px",borderRadius:4,fontSize:9.5}}>{j.tag}</span>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{color:mc,fontSize:10,fontWeight:700}}>M:{j.mindset}</span>
+              <span style={{color:C.sb,fontSize:10.5}}>{new Date(j.date+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>
+            </div>
+          </div>
+          {preview&&<div style={{color:C.sb,fontSize:11.5,lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{preview.slice(0,140)}{preview.length>140?"...":""}</div>}
+        </Cd>;
+      })}
+      {searchQ.trim().length<=1&&<div style={{textAlign:"center",padding:32,color:C.mt,fontSize:12}}>Type 2+ characters to search all your entries</div>}
+    </>}
+  </div>;
+}
 
 // NUTRITION
 function Nutrition({data:d,setData:sd,sxp}){
