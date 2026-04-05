@@ -20,7 +20,7 @@ const tq=()=>QS[doy()%QS.length];
 const gr=x=>{let r=RK[0];for(const k of RK){if(x>=k.x)r=k;else break;}return r;};
 const nrk=x=>{for(const k of RK){if(x<k.x)return k;}return null;};
 
-const DD=()=>({xp:0,habits:[{id:"h1",name:"Morning Routine",active:true},{id:"h2",name:"Exercise",active:true},{id:"h3",name:"Read 30 mins",active:true},{id:"h4",name:"No Social Media before 12pm",active:true},{id:"h5",name:"Gratitude Practice",active:true}],habitLog:{},goals:{daily:[],weekly:[],monthly:[],yearly:[]},goalArchive:[],journal:[],workouts:[],transactions:[],books:[],sleepLog:{},meals:[],macroTargets:{calories:2500,protein:150,carbs:300,fat:80},weightLog:[],weightTarget:{weight:null,date:null},recentScans:[],waterLog:{},waterTarget:2500,routine:[{id:"r1",time:"06:00",name:"Wake Up & Hydrate"},{id:"r2",time:"06:30",name:"Gym / Training"},{id:"r3",time:"08:00",name:"Shower & Prep"},{id:"r4",time:"08:30",name:"Deep Work Block 1"},{id:"r5",time:"12:00",name:"Lunch"},{id:"r6",time:"13:00",name:"Deep Work Block 2"},{id:"r7",time:"17:00",name:"Review & Plan Tomorrow"},{id:"r8",time:"21:00",name:"Wind Down & Read"},{id:"r9",time:"22:00",name:"Lights Out"}],routineSat:[],routineSun:[],routineLog:{},streak:0,bestStreak:0,lastDate:td(),lastWeek:wkk(),lastMonth:mkk(),lastYear:ykk()});
+const DD=()=>({xp:0,habits:[{id:"h1",name:"Morning Routine",active:true},{id:"h2",name:"Exercise",active:true},{id:"h3",name:"Read 30 mins",active:true},{id:"h4",name:"No Social Media before 12pm",active:true},{id:"h5",name:"Gratitude Practice",active:true}],habitLog:{},goals:{daily:[],weekly:[],monthly:[],yearly:[]},goalArchive:[],journal:[],workouts:[],transactions:[],books:[],sleepLog:{},meals:[],macroTargets:{calories:2500,protein:150,carbs:300,fat:80},weightLog:[],weightTarget:{weight:null,date:null},recentScans:[],waterLog:{},waterTarget:2500,trades:[],routine:[{id:"r1",time:"06:00",name:"Wake Up & Hydrate"},{id:"r2",time:"06:30",name:"Gym / Training"},{id:"r3",time:"08:00",name:"Shower & Prep"},{id:"r4",time:"08:30",name:"Deep Work Block 1"},{id:"r5",time:"12:00",name:"Lunch"},{id:"r6",time:"13:00",name:"Deep Work Block 2"},{id:"r7",time:"17:00",name:"Review & Plan Tomorrow"},{id:"r8",time:"21:00",name:"Wind Down & Read"},{id:"r9",time:"22:00",name:"Lights Out"}],routineSat:[],routineSun:[],routineLog:{},streak:0,bestStreak:0,lastDate:td(),lastWeek:wkk(),lastMonth:mkk(),lastYear:ykk()});
 
 async function loadUD(uid){try{const{data}=await supabase.from('user_data').select('data').eq('id',uid).single();return data&&data.data?{...DD(),...data.data}:DD();}catch{return DD();}}
 async function saveUD(uid,d){try{await supabase.from('user_data').upsert({id:uid,data:d,updated_at:new Date().toISOString()});}catch(e){console.error(e);}}
@@ -682,9 +682,198 @@ function SB({page:p,setPage:sp,data:d,isAdmin,pendingCount,mobile,open,setOpen})
   </div></>;
 }
 
+// TRADING HUB
+function TradingHub({data:d,setData:sd,onClose}){
+  const[tpg,sTpg]=useState("dashboard");
+  const[flt,sFlt]=useState({year:"All",month:"All",session:"All",asset:"All",dow:"All",result:"All"});
+  const[af,sAf]=useState({date:td(),time:"09:00",symbol:"",direction:"long",session:"LDN",rValue:"",setup:"",notes:""});
+  const[csvMsg,sCsvMsg]=useState("");
+  const fileRef=useRef();
+  const mobile=useIsMobile();
+  const ts=d.trades||[];
+  const yr=[...new Set(ts.map(t=>t.date.slice(0,4)))].sort().reverse();
+  const mo=[...new Set(ts.map(t=>t.date.slice(0,7)))].sort().reverse();
+  const as=[...new Set(ts.map(t=>t.symbol))].sort();
+  const ss=["LDN","NY","ASIA","OTHER"];
+  const DNS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const MNS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const ft=ts.filter(t=>{
+    if(flt.year!=="All"&&!t.date.startsWith(flt.year))return false;
+    if(flt.month!=="All"&&!t.date.startsWith(flt.month))return false;
+    if(flt.session!=="All"&&t.session!==flt.session)return false;
+    if(flt.asset!=="All"&&t.symbol!==flt.asset)return false;
+    if(flt.dow!=="All"){if(DNS[new Date(t.date+"T12:00:00").getDay()]!==flt.dow)return false;}
+    if(flt.result!=="All"&&t.result!==flt.result.toLowerCase())return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+
+  const wins=ft.filter(t=>t.result==="win"),losses=ft.filter(t=>t.result==="loss");
+  const totalR=ft.reduce((a,t)=>a+t.rValue,0);
+  const wr=ft.length?wins.length/ft.length*100:0;
+  const avgW=wins.length?wins.reduce((a,t)=>a+t.rValue,0)/wins.length:0;
+  const avgL=losses.length?losses.reduce((a,t)=>a+t.rValue,0)/losses.length:0;
+  const exp=ft.length?(wr/100*avgW+(1-wr/100)*avgL):0;
+  const pfac=losses.length&&Math.abs(avgL)>0?(Math.abs(avgW)*wins.length)/(Math.abs(avgL)*losses.length):wins.length?Infinity:0;
+  let pk=0,mxDD=0,cu=0;for(const t of ft){cu+=t.rValue;if(cu>pk)pk=cu;const dr=pk-cu;if(dr>mxDD)mxDD=dr;}
+  let bS=0,wS=0,cs=0,ct="";for(const t of ft){if(t.result==="win"){cs=ct==="win"?cs+1:1;ct="win";bS=Math.max(bS,cs);}else if(t.result==="loss"){cs=ct==="loss"?cs+1:1;ct="loss";wS=Math.max(wS,cs);}}
+  const l5=[...ft].slice(-5);
+  let ec=0;const eqD=ft.map((t,i)=>{ec+=t.rValue;return{n:i+1,r:parseFloat(ec.toFixed(2))};});
+
+  const rf=r=>(r>=0?"+":"")+r.toFixed(1)+"R";
+  const rc=r=>r>0?C.gn:r<0?C.rd:C.sb;
+  const wc=w=>w>=55?C.gn:w>=45?C.ac:C.rd;
+  const resetFlt=()=>sFlt({year:"All",month:"All",session:"All",asset:"All",dow:"All",result:"All"});
+
+  const brkBy=key=>Object.entries(ft.reduce((acc,t)=>{const k=t[key]||"?";if(!acc[k])acc[k]={tr:0,wi:0,tR:0};acc[k].tr++;if(t.result==="win")acc[k].wi++;acc[k].tR+=t.rValue;return acc;},{})).map(([k,v])=>({k,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))})).sort((a,b)=>b.tr-a.tr);
+  const brkDow=()=>{const acc={};ft.forEach(t=>{const dw=DNS[new Date(t.date+"T12:00:00").getDay()];if(!acc[dw])acc[dw]={tr:0,wi:0,tR:0};acc[dw].tr++;if(t.result==="win")acc[dw].wi++;acc[dw].tR+=t.rValue;});return Object.entries(acc).map(([k,v])=>({k,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))})).sort((a,b)=>b.tr-a.tr);};
+  const brkMo=()=>{const acc={};ft.forEach(t=>{const mk=t.date.slice(0,7);if(!acc[mk])acc[mk]={tr:0,wi:0,tR:0,lb:MNS[parseInt(t.date.slice(5,7))-1].toUpperCase()};acc[mk].tr++;if(t.result==="win")acc[mk].wi++;acc[mk].tR+=t.rValue;});return Object.entries(acc).map(([,v])=>({k:v.lb,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))}));};
+
+  const addT=()=>{const r=parseFloat(af.rValue);if(!af.symbol.trim()||isNaN(r))return;const res=r>0?"win":r<0?"loss":"be";sd({...d,trades:[...(d.trades||[]),{id:"t"+Date.now(),date:af.date,time:af.time,symbol:af.symbol.trim().toUpperCase(),direction:af.direction,session:af.session,rValue:r,result:res,setup:af.setup,notes:af.notes}]});sAf({date:td(),time:"09:00",symbol:"",direction:"long",session:"LDN",rValue:"",setup:"",notes:""});sTpg("log");};
+  const delT=id=>sd({...d,trades:(d.trades||[]).filter(t=>t.id!==id)});
+  const importC=e=>{const file=e.target.files[0];if(!file)return;const rdr=new FileReader();rdr.onload=ev=>{const lines=ev.target.result.split("\n").filter(l=>l.trim());const nT=[];for(let i=1;i<lines.length;i++){const c=lines[i].split(",").map(x=>x.trim().replace(/^"|"$/g,""));if(c.length<6)continue;const[dt,ti,sym,dir,sess,rv,...rest]=c;const rv2=parseFloat(rv);if(!dt||!sym||isNaN(rv2))continue;nT.push({id:"t"+Date.now()+i,date:dt,time:ti||"09:00",symbol:sym.toUpperCase(),direction:dir||"long",session:sess||"OTHER",rValue:rv2,result:rv2>0?"win":rv2<0?"loss":"be",setup:rest[0]||"",notes:rest[1]||""});}if(!nT.length){sCsvMsg("No valid rows. Format: date,time,symbol,direction,session,r");return;}sd({...d,trades:[...(d.trades||[]),...nT]});sCsvMsg(nT.length+" trades imported!");setTimeout(()=>sCsvMsg(""),3000);};rdr.readAsText(file);e.target.value="";};
+  const exportC=()=>{const rows=[["date","time","symbol","direction","session","r","result","setup","notes"],...(d.trades||[]).map(t=>[t.date,t.time,t.symbol,t.direction,t.session,t.rValue,t.result,t.setup||"",t.notes||""])];const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}));a.download="protocol_x_trades.csv";a.click();};
+
+  const FltSel=({l,k,opts})=><div><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:700,marginBottom:4}}>{l}</div><select value={flt[k]} onChange={e=>sFlt({...flt,[k]:e.target.value})} style={{background:C.cd,border:"1px solid "+C.bd,borderRadius:8,padding:"7px 10px",color:C.tx,fontSize:12,cursor:"pointer",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}>{["All",...opts].map(o=><option key={o} value={o}>{o}</option>)}</select></div>;
+  const BrkRows=({rows})=>rows.length===0?<div style={{color:C.sb,fontSize:12,padding:"8px 0"}}>No data</div>:<>{rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid "+C.bd}}><span style={{color:C.tx,fontSize:13,fontWeight:600,flex:1}}>{r.k}</span><div style={{display:"flex",gap:18}}><div style={{textAlign:"right",minWidth:40}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>TRADES</div><div style={{color:C.tx,fontSize:13,fontWeight:700}}>{r.tr}</div></div><div style={{textAlign:"right",minWidth:44}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>WIN%</div><div style={{color:wc(r.wp),fontSize:13,fontWeight:700}}>{r.wp}%</div></div><div style={{textAlign:"right",minWidth:60}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>TOTAL R</div><div style={{color:rc(r.tR),fontSize:13,fontWeight:700}}>{rf(r.tR)}</div></div></div></div>)}</>;
+  const TSC=({label,value,sub,glow})=><div style={{background:C.cd,border:"1px solid "+C.bd,borderRadius:14,padding:"16px 20px",flex:1,minWidth:130,...(glow?{boxShadow:"0 0 24px "+glow}:{})}}><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.8,fontWeight:700,marginBottom:8,fontFamily:"Outfit,sans-serif"}}>{label}</div><div style={{fontFamily:"Outfit,sans-serif",lineHeight:1}}>{value}</div>{sub&&<div style={{marginTop:8}}>{sub}</div>}</div>;
+  const navItems=[{id:"dashboard",l:"📊 Dashboard"},{id:"log",l:"📋 Trade Log"},{id:"breakdowns",l:"🔍 Breakdowns"},{id:"add",l:"+ Log Trade"}];
+  const FltBar=({extra=[]})=><div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap",alignItems:"flex-end"}}><FltSel l="YEAR" k="year" opts={yr}/><FltSel l="MONTH" k="month" opts={mo}/><FltSel l="SESSION" k="session" opts={ss}/><FltSel l="ASSET" k="asset" opts={as}/>{extra.map((e,i)=><React.Fragment key={i}>{e}</React.Fragment>)}<button onClick={resetFlt} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",color:C.sb,cursor:"pointer",fontSize:12,fontWeight:600,alignSelf:"flex-end"}}>Reset</button></div>;
+
+  return <div style={{position:"fixed",inset:0,background:C.bg,zIndex:200,display:"flex",flexDirection:"column",fontFamily:"Plus Jakarta Sans,sans-serif"}}>
+    {/* Portal Header */}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 24px",height:58,borderBottom:"1px solid "+C.bd,background:"rgba(8,9,13,0.98)",backdropFilter:"blur(20px)",flexShrink:0,zIndex:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:14}}>
+        <button onClick={onClose} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 12px",color:C.sb,cursor:"pointer",fontSize:11,fontWeight:600,display:"flex",alignItems:"center",gap:5}}>← Protocol X</button>
+        <div style={{width:1,height:20,background:C.bd}}/>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#10b981,#059669)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📈</div>
+          <div><div style={{color:C.tx,fontWeight:800,fontSize:14,fontFamily:"Outfit,sans-serif",letterSpacing:0.5}}>TRADING HUB</div><div style={{color:"#10b981",fontSize:8.5,letterSpacing:2,fontWeight:600}}>PROTOCOL X</div></div>
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        {csvMsg&&<div style={{color:C.gn,fontSize:11,fontWeight:600,padding:"6px 12px",background:C.gg,borderRadius:8,border:"1px solid rgba(16,185,129,0.2)"}}>{csvMsg}</div>}
+        <input type="file" ref={fileRef} accept=".csv" style={{display:"none"}} onChange={importC}/>
+        <button onClick={exportC} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"7px 14px",color:C.tx,cursor:"pointer",fontSize:11,fontWeight:600}}>↓ Export CSV</button>
+        <button onClick={()=>fileRef.current?.click()} style={{background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",cursor:"pointer",fontSize:11,fontWeight:700}}>+ Import CSV</button>
+        <button onClick={()=>sTpg("add")} style={{background:"linear-gradient(135deg,#f59e0b,#f97316)",border:"none",borderRadius:8,padding:"7px 14px",color:"#000",cursor:"pointer",fontSize:11,fontWeight:800}}>+ Log Trade</button>
+      </div>
+    </div>
+    {/* Sub-nav */}
+    <div style={{display:"flex",gap:2,padding:"10px 24px",borderBottom:"1px solid "+C.bd,background:"rgba(8,9,13,0.95)",flexShrink:0}}>
+      {navItems.map(n=><button key={n.id} onClick={()=>sTpg(n.id)} style={{padding:"7px 16px",borderRadius:8,border:tpg===n.id?"1px solid #10b981":"1px solid transparent",background:tpg===n.id?"rgba(16,185,129,0.1)":"transparent",color:tpg===n.id?"#10b981":C.sb,fontSize:12,fontWeight:tpg===n.id?700:500,cursor:"pointer",fontFamily:"Plus Jakarta Sans,sans-serif",transition:"all 0.15s"}}>{n.l}</button>)}
+      <div style={{flex:1}}/>
+      <div style={{color:C.sb,fontSize:11,alignSelf:"center"}}>{ts.length} total trades · filtered: {ft.length}</div>
+    </div>
+    {/* Content */}
+    <div style={{flex:1,overflowY:"auto",padding:"20px 24px"}}>
+    <div style={{maxWidth:1200,margin:"0 auto"}}>
+
+    {/* DASHBOARD */}
+    {tpg==="dashboard"&&<div>
+      <FltBar extra={[<FltSel l="DAY" k="dow" opts={DNS.slice(1).concat(DNS[0])}/>,<FltSel l="RESULT" k="result" opts={["Win","Loss","BE"]}/>]}/>
+      {ft.length===0?<div style={{textAlign:"center",padding:"60px 0"}}><div style={{fontSize:48,marginBottom:16}}>📊</div><div style={{color:C.tx,fontSize:18,fontWeight:700,marginBottom:8,fontFamily:"Outfit,sans-serif"}}>Trading Journal Empty</div><div style={{color:C.sb,fontSize:13,marginBottom:24}}>Log your first trade or import a CSV to see your stats</div><div style={{display:"flex",gap:10,justifyContent:"center"}}><Bt onClick={()=>sTpg("add")}>+ Log First Trade</Bt><Bt v="secondary" onClick={()=>fileRef.current?.click()}>Import CSV</Bt></div></div>:<>
+      <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+        <TSC label="TOTAL R" value={<span style={{color:rc(totalR),fontSize:30,fontWeight:900}}>{rf(totalR)}</span>} sub={<div style={{color:C.sb,fontSize:11}}>{ft.length} trades</div>} glow={totalR>0?"rgba(16,185,129,0.15)":"rgba(239,68,68,0.1)"}/>
+        <TSC label="WIN RATE" value={<span style={{color:wc(wr),fontSize:30,fontWeight:900}}>{wr.toFixed(1)}%</span>} sub={<div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><span style={{color:C.gn,fontSize:11,fontWeight:700}}>{wins.length}W</span><span style={{color:C.sb,fontSize:11}}>/</span><span style={{color:C.rd,fontSize:11,fontWeight:700}}>{losses.length}L</span><div style={{flex:1,height:4,background:C.sf,borderRadius:2,overflow:"hidden",maxWidth:60}}><div style={{height:"100%",background:"linear-gradient(90deg,"+C.gn+",#059669)",width:Math.round(wr)+"%",borderRadius:2}}/></div></div>}/>
+        <TSC label="AVG WIN / AVG LOSS" value={<span style={{fontSize:20,fontWeight:900}}><span style={{color:C.gn}}>{rf(avgW)}</span><span style={{color:C.sb,fontSize:16}}> / </span><span style={{color:C.rd}}>{rf(avgL)}</span></span>}/>
+        <TSC label="EXPECTANCY" value={<span style={{color:rc(exp),fontSize:28,fontWeight:900}}>{rf(exp)}</span>} sub={<div style={{color:C.sb,fontSize:11,marginTop:2}}>per trade</div>}/>
+        <TSC label="PROFIT FACTOR" value={<span style={{color:pfac>=1.5?C.gn:pfac>=1?C.ac:C.rd,fontSize:28,fontWeight:900}}>{isFinite(pfac)?pfac.toFixed(2):"∞"}</span>}/>
+        <TSC label="MAX DRAWDOWN" value={<span style={{color:C.rd,fontSize:28,fontWeight:900}}>-{mxDD.toFixed(1)}R</span>}/>
+      </div>
+      <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
+        <TSC label="BEST STREAK" value={<span style={{color:C.gn,fontSize:28,fontWeight:900}}>{bS}W</span>} sub={<div style={{color:C.sb,fontSize:11,marginTop:2}}>Worst: {wS}L</div>}/>
+        <TSC label="LAST 5 TRADES" value={<div style={{display:"flex",gap:8,alignItems:"center",marginTop:4}}>{l5.length===0?<span style={{color:C.sb,fontSize:13}}>–</span>:l5.map((t,i)=><div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><div style={{width:14,height:14,borderRadius:"50%",background:t.result==="win"?C.gn:t.result==="loss"?C.rd:C.sb}}/><span style={{color:C.sb,fontSize:9,fontWeight:600,fontFamily:"Outfit,sans-serif"}}>{rf(t.rValue)}</span></div>)}</div>} sub={l5.length>0&&<div style={{color:C.sb,fontSize:10,marginTop:4}}>{l5.map(t=>rf(t.rValue)).join(", ")}</div>}/>
+      </div>
+      <div style={{background:C.cd,border:"1px solid "+C.bd,borderRadius:14,padding:"20px 20px 14px"}}>
+        <div style={{color:C.sb,fontSize:8.5,letterSpacing:2,fontWeight:700,marginBottom:14}}>EQUITY CURVE (CUMULATIVE R)</div>
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={eqD} margin={{top:5,right:10,left:0,bottom:0}}>
+            <defs><linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs>
+            <XAxis dataKey="n" hide/>
+            <YAxis axisLine={false} tickLine={false} tick={{fill:C.sb,fontSize:10}} tickFormatter={v=>v+"R"} width={35}/>
+            <Tooltip contentStyle={{background:C.gl,border:"1px solid "+C.bd,borderRadius:10,color:C.tx,fontSize:11}} formatter={v=>[v+"R","Cumulative R"]}/>
+            <Area type="monotone" dataKey="r" stroke="#10b981" strokeWidth={2.5} fill="url(#eqGrad)"/>
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      </>}
+    </div>}
+
+    {/* BREAKDOWNS */}
+    {tpg==="breakdowns"&&<div>
+      <FltBar/>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
+        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>SESSION BREAKDOWN</div><BrkRows rows={brkBy("session")}/></Cd>
+        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>ASSET BREAKDOWN</div><BrkRows rows={brkBy("symbol")}/></Cd>
+        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>DAY OF WEEK</div><BrkRows rows={brkDow()}/></Cd>
+      </div>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>MONTHLY BREAKDOWN</div><BrkRows rows={brkMo()}/></Cd>
+        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>DIRECTION BREAKDOWN</div><BrkRows rows={brkBy("direction")}/></Cd>
+      </div>
+    </div>}
+
+    {/* TRADE LOG */}
+    {tpg==="log"&&<div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <div><div style={{color:C.sb,fontSize:8.5,letterSpacing:2,fontWeight:700}}>TRADE LOG</div><div style={{color:C.tx,fontSize:13,fontWeight:700,marginTop:2}}>{ft.length} trades · Total R: <span style={{color:rc(totalR)}}>{rf(totalR)}</span></div></div>
+        <div style={{display:"flex",gap:8}}>
+          <FltSel l="ASSET" k="asset" opts={as}/>
+          <FltSel l="SESSION" k="session" opts={ss}/>
+          <FltSel l="RESULT" k="result" opts={["Win","Loss","BE"]}/>
+          <button onClick={resetFlt} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"7px 10px",color:C.sb,cursor:"pointer",fontSize:11,fontWeight:600,alignSelf:"flex-end"}}>Reset</button>
+        </div>
+      </div>
+      {ft.length===0?<Cd style={{textAlign:"center",padding:30}}><div style={{color:C.sb,fontSize:13}}>No trades match filters</div></Cd>:<div>
+        <div style={{display:"grid",gridTemplateColumns:"90px 1fr 80px 70px 70px 60px 70px 30px",gap:8,padding:"6px 16px",marginBottom:4}}>{["DATE","SYMBOL","SESSION","DIR","SETUP","R","RESULT",""].map(h=><div key={h} style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:700}}>{h}</div>)}</div>
+        {[...ft].reverse().map(t=><div key={t.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 80px 70px 70px 60px 70px 30px",gap:8,padding:"11px 16px",borderRadius:10,marginBottom:4,background:C.cd,border:"1px solid "+C.bd,alignItems:"center"}}>
+          <div><div style={{color:C.tx,fontSize:11,fontWeight:600}}>{t.date}</div><div style={{color:C.sb,fontSize:9}}>{t.time}</div></div>
+          <div><div style={{color:C.tx,fontWeight:800,fontSize:13,fontFamily:"Outfit,sans-serif"}}>{t.symbol}</div>{t.notes&&<div style={{color:C.sb,fontSize:10,marginTop:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",maxWidth:200}}>{t.notes}</div>}</div>
+          <div style={{color:C.sb,fontSize:12,fontWeight:600}}>{t.session}</div>
+          <div style={{color:t.direction==="long"?C.gn:C.rd,fontSize:11,fontWeight:700,textTransform:"uppercase"}}>{t.direction}</div>
+          <div>{t.setup?<span style={{background:C.ag,color:C.ac,padding:"2px 7px",borderRadius:5,fontSize:9,fontWeight:700}}>{t.setup}</span>:<span style={{color:C.mt}}>–</span>}</div>
+          <div style={{color:rc(t.rValue),fontWeight:900,fontSize:14,fontFamily:"Outfit,sans-serif"}}>{rf(t.rValue)}</div>
+          <div style={{color:t.result==="win"?C.gn:t.result==="loss"?C.rd:C.sb,fontSize:9,fontWeight:700,letterSpacing:1}}>{t.result.toUpperCase()}</div>
+          <button onClick={()=>delT(t.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.mt,fontSize:16,padding:0}}>×</button>
+        </div>)}
+      </div>}
+    </div>}
+
+    {/* ADD TRADE */}
+    {tpg==="add"&&<div style={{maxWidth:540}}>
+      <SH title="Log Trade" sub="Record your execution precisely."/>
+      <Cd style={{padding:24}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>DATE</label><Inp value={af.date} onChange={e=>sAf({...af,date:e.target.value})} type="date" style={{width:"100%"}}/></div>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>TIME</label><Inp value={af.time} onChange={e=>sAf({...af,time:e.target.value})} type="time" style={{width:"100%"}}/></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SYMBOL</label><Inp value={af.symbol} onChange={e=>sAf({...af,symbol:e.target.value})} placeholder="EURUSD, NQ, GBPUSD..." style={{width:"100%"}}/></div>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>R VALUE <span style={{color:C.sb,fontSize:8}}>(+1.5 win · -1.0 loss)</span></label><Inp value={af.rValue} onChange={e=>sAf({...af,rValue:e.target.value})} placeholder="+1.5 or -1.0" type="number" step="0.1" style={{width:"100%"}}/></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>DIRECTION</label><select value={af.direction} onChange={e=>sAf({...af,direction:e.target.value})} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}><option value="long">Long</option><option value="short">Short</option></select></div>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SESSION</label><select value={af.session} onChange={e=>sAf({...af,session:e.target.value})} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}>{ss.map(s=><option key={s}>{s}</option>)}</select></div>
+          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SETUP TAG</label><Inp value={af.setup} onChange={e=>sAf({...af,setup:e.target.value})} placeholder="BOS, MSS, ICT..." style={{width:"100%"}}/></div>
+        </div>
+        <div style={{marginBottom:18}}><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>NOTES</label><textarea value={af.notes} onChange={e=>sAf({...af,notes:e.target.value})} placeholder="What happened? Emotions, execution notes, what you'd do differently..." rows={3} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",boxSizing:"border-box",resize:"vertical",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}/></div>
+        <div style={{display:"flex",gap:10}}>
+          <Bt onClick={addT} style={{flex:1,justifyContent:"center",padding:"12px",fontSize:13}}>✓ Save Trade</Bt>
+          <Bt v="secondary" onClick={()=>sTpg("log")} style={{padding:"12px 18px"}}>Cancel</Bt>
+        </div>
+      </Cd>
+      <div style={{marginTop:20}}><div style={{color:C.sb,fontSize:9,letterSpacing:1.5,fontWeight:700,marginBottom:8}}>CSV IMPORT FORMAT</div><Cd style={{padding:14}}><div style={{color:C.sb,fontSize:11,fontFamily:"monospace",lineHeight:1.9}}>date,time,symbol,direction,session,r,setup,notes<br/>2024-01-15,09:30,EURUSD,long,LDN,1.5,BOS,Clean setup<br/>2024-01-16,14:00,NQ,short,NY,-1.0,MSS,Early entry</div></Cd></div>
+    </div>}
+
+    </div>
+    </div>
+  </div>;
+}
+
 // MAIN APP
 export default function App(){
-  const[user,setUser]=useState(null),[isAdmin,setIsAdmin]=useState(false),[pg,sPg]=useState("today"),[d,sD]=useState(DD()),[ld,sLd]=useState(false),[toast,sT]=useState({v:false,a:0}),[pendingCount,sPC]=useState(0),[checking,setChecking]=useState(true);
+  const[user,setUser]=useState(null),[isAdmin,setIsAdmin]=useState(false),[pg,sPg]=useState("today"),[d,sD]=useState(DD()),[ld,sLd]=useState(false),[toast,sT]=useState({v:false,a:0}),[pendingCount,sPC]=useState(0),[checking,setChecking]=useState(true),[showHub,sShowHub]=useState(false);
 const mobile=useIsMobile();const[sideOpen,setSideOpen]=useState(false);
 
   useEffect(()=>{supabase.auth.getSession().then(({data:{session}})=>{if(session?.user){if(session.user.email===ADMIN_EMAIL){setUser(session.user);setIsAdmin(true);setChecking(false);return;}supabase.rpc('check_user_status',{user_id:session.user.id}).then(({data:profArr})=>{const prof=profArr&&profArr[0]?profArr[0]:null;if(prof&&prof.status==='approved'){setUser(session.user);setIsAdmin(prof.is_admin||false);}else{supabase.auth.signOut();}setChecking(false);});}else{setChecking(false);}});supabase.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){setUser(null);setIsAdmin(false);sLd(false);}});},[]);
@@ -692,7 +881,7 @@ const mobile=useIsMobile();const[sideOpen,setSideOpen]=useState(false);
   useEffect(()=>{if(!isAdmin)return;const check=async()=>{const{data}=await supabase.rpc('get_all_profiles');sPC((data||[]).filter(x=>x.status==="pending").length);};check();const iv=setInterval(check,15000);return()=>clearInterval(iv);},[isAdmin]);
 
   useEffect(()=>{if(!user)return;loadUD(user.id).then(d2=>{
-    if(!d2.goals?.daily)d2.goals={daily:[],weekly:[],monthly:[],yearly:[]};if(!d2.goalArchive)d2.goalArchive=[];if(!d2.meals)d2.meals=[];if(!d2.weightLog)d2.weightLog=[];if(!d2.weightTarget)d2.weightTarget={weight:null,date:null};if(!d2.recentScans)d2.recentScans=[];if(!d2.waterLog)d2.waterLog={};if(!d2.waterTarget)d2.waterTarget=2500;if(!d2.routine)d2.routine=DD().routine;if(!d2.routineSat)d2.routineSat=[];if(!d2.routineSun)d2.routineSun=[];if(!d2.routineLog)d2.routineLog={};if(!d2.macroTargets)d2.macroTargets={calories:2500,protein:150,carbs:300,fat:80};
+    if(!d2.goals?.daily)d2.goals={daily:[],weekly:[],monthly:[],yearly:[]};if(!d2.goalArchive)d2.goalArchive=[];if(!d2.meals)d2.meals=[];if(!d2.weightLog)d2.weightLog=[];if(!d2.weightTarget)d2.weightTarget={weight:null,date:null};if(!d2.recentScans)d2.recentScans=[];if(!d2.waterLog)d2.waterLog={};if(!d2.waterTarget)d2.waterTarget=2500;if(!d2.trades)d2.trades=[];if(!d2.routine)d2.routine=DD().routine;if(!d2.routineSat)d2.routineSat=[];if(!d2.routineSun)d2.routineSun=[];if(!d2.routineLog)d2.routineLog={};if(!d2.macroTargets)d2.macroTargets={calories:2500,protein:150,carbs:300,fat:80};
     const today=td(),w=wkk(),m=mkk(),y=ykk();
     if(d2.lastDate&&d2.lastDate!==today){if(d2.goals.daily.length>0){d2.goalArchive=[{id:"a"+Date.now(),type:"daily",date:d2.lastDate,periodLabel:d2.lastDate,goals:d2.goals.daily.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.daily.filter(g=>g.completed).length,total:d2.goals.daily.length},...d2.goalArchive];d2.goals.daily=[];}if(d2.lastWeek!==w&&d2.goals.weekly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+1),type:"weekly",date:today,periodLabel:d2.lastWeek,goals:d2.goals.weekly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.weekly.filter(g=>g.completed).length,total:d2.goals.weekly.length},...d2.goalArchive];d2.goals.weekly=[];}if(d2.lastMonth!==m&&d2.goals.monthly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+2),type:"monthly",date:today,periodLabel:d2.lastMonth,goals:d2.goals.monthly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.monthly.filter(g=>g.completed).length,total:d2.goals.monthly.length},...d2.goalArchive];d2.goals.monthly=[];}if(d2.lastYear!==y&&d2.goals.yearly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+3),type:"yearly",date:today,periodLabel:d2.lastYear,goals:d2.goals.yearly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.yearly.filter(g=>g.completed).length,total:d2.goals.yearly.length},...d2.goalArchive];d2.goals.yearly=[];}const act=d2.habits.filter(h=>h.active),prev=d2.habitLog[d2.lastDate]||[];if(prev.length===act.length&&act.length>0){d2.streak=(d2.streak||0)+1;d2.bestStreak=Math.max(d2.bestStreak||0,d2.streak);}else{const yy=new Date();yy.setDate(yy.getDate()-1);if(d2.lastDate!==yy.toISOString().split("T")[0])d2.streak=0;}d2.lastDate=today;d2.lastWeek=w;d2.lastMonth=m;d2.lastYear=y;}
     saveUD(user.id,d2);sD(d2);sLd(true);
@@ -712,5 +901,12 @@ const mobile=useIsMobile();const[sideOpen,setSideOpen]=useState(false);
   const props={data:d,setData,sxp};
   const rp=()=>{if(pg==="today")return <Today data={d} setPage={sPg}/>;if(pg==="dashboard")return <Dash data={d} setPage={sPg}/>;if(pg==="habits")return <Habits {...props}/>;if(pg==="routine")return <Routine {...props}/>;if(pg==="goals")return <Goals {...props}/>;if(pg==="journal")return <Journal {...props}/>;if(pg==="nutrition")return <Nutrition {...props}/>;if(pg==="weight")return <Weight {...props}/>;if(pg==="fitness")return <Fitness {...props}/>;if(pg==="finance")return <Finance {...props}/>;if(pg==="reading")return <Reading {...props}/>;if(pg==="sleep")return <SleepPg {...props}/>;if(pg==="analytics")return <Analytics data={d}/>;if(pg==="weekly")return <WeeklyReview data={d}/>;if(pg==="rank")return <RankPg data={d}/>;if(pg==="settings")return <Sett data={d} setData={setData} onLogout={logout}/>;if(pg==="admin"&&isAdmin)return <AdminPanel/>;return <Today data={d} setPage={sPg}/>;};
 
- return <div style={{display:"flex",minHeight:"100vh",background:C.bg,fontFamily:"Plus Jakarta Sans,sans-serif"}}><style>{css}</style>{toast.v&&<div style={{position:"fixed",top:mobile?20:80,right:mobile?16:30,zIndex:9999,background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"#000",fontWeight:800,fontSize:mobile?15:17,padding:mobile?"9px 18px":"11px 22px",borderRadius:12,animation:"xpSlide 1.5s ease forwards",boxShadow:"0 8px 32px rgba(245,158,11,0.4)",fontFamily:"Outfit,sans-serif"}}>+{toast.a} XP ⚡</div>}{mobile&&<div style={{position:"fixed",top:0,left:0,right:0,background:"rgba(8,9,13,0.98)",borderBottom:"1px solid "+C.bd,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",zIndex:100,backdropFilter:"blur(20px)"}}><button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:C.tx,fontSize:22,cursor:"pointer",padding:4}}>☰</button><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#f97316)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#000",fontFamily:"Outfit,sans-serif"}}>PX</div><span style={{color:C.tx,fontWeight:700,fontSize:14,fontFamily:"Outfit,sans-serif"}}>PROTOCOL X</span></div><div style={{width:30}}/></div>}<SB page={pg} setPage={sPg} data={d} isAdmin={isAdmin} pendingCount={pendingCount} mobile={mobile} open={sideOpen} setOpen={setSideOpen}/><div style={{marginLeft:mobile?0:210,flex:1,padding:mobile?"70px 16px 80px":"24px 32px",maxWidth:940}}><div key={pg} className="page-enter">{rp()}</div></div>{mobile&&<BottomNav page={pg} setPage={sPg}/>}</div>;
+ return <div style={{display:"flex",minHeight:"100vh",background:C.bg,fontFamily:"Plus Jakarta Sans,sans-serif"}}><style>{css}</style>{toast.v&&<div style={{position:"fixed",top:mobile?20:80,right:mobile?16:30,zIndex:9999,background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"#000",fontWeight:800,fontSize:mobile?15:17,padding:mobile?"9px 18px":"11px 22px",borderRadius:12,animation:"xpSlide 1.5s ease forwards",boxShadow:"0 8px 32px rgba(245,158,11,0.4)",fontFamily:"Outfit,sans-serif"}}>+{toast.a} XP ⚡</div>}{mobile&&<div style={{position:"fixed",top:0,left:0,right:0,background:"rgba(8,9,13,0.98)",borderBottom:"1px solid "+C.bd,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",zIndex:100,backdropFilter:"blur(20px)"}}><button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:C.tx,fontSize:22,cursor:"pointer",padding:4}}>☰</button><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#f97316)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#000",fontFamily:"Outfit,sans-serif"}}>PX</div><span style={{color:C.tx,fontWeight:700,fontSize:14,fontFamily:"Outfit,sans-serif"}}>PROTOCOL X</span></div><div style={{width:30}}/></div>}<SB page={pg} setPage={sPg} data={d} isAdmin={isAdmin} pendingCount={pendingCount} mobile={mobile} open={sideOpen} setOpen={setSideOpen}/><div style={{marginLeft:mobile?0:210,flex:1,padding:mobile?"70px 16px 80px":"24px 32px",maxWidth:940}}><div key={pg} className="page-enter">{rp()}</div></div>{mobile&&<BottomNav page={pg} setPage={sPg}/>}
+  {/* Trading HUB floating button */}
+  <button onClick={()=>sShowHub(true)} style={{position:"fixed",bottom:mobile?90:28,right:20,zIndex:150,display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:12,padding:"10px 14px",color:"#fff",cursor:"pointer",boxShadow:"0 4px 24px rgba(16,185,129,0.4)",fontFamily:"Outfit,sans-serif"}}>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span style={{fontWeight:800,fontSize:11,letterSpacing:1}}>HUB</span>
+  </button>
+  {showHub&&<TradingHub data={d} setData={setData} onClose={()=>sShowHub(false)}/>}
+</div>;
 }
