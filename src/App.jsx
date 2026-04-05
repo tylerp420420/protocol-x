@@ -683,38 +683,40 @@ function SB({page:p,setPage:sp,data:d,isAdmin,pendingCount,mobile,open,setOpen})
 }
 
 // TRADING HUB
+const TH={bg:'#080b14',hd:'#0b0e18',card:'rgba(255,255,255,0.03)',bd:'rgba(255,255,255,0.07)',gn:'#16c784',rd:'#ea3943',tx:'#f1f5fb',sb:'#4b5775',mt:'#1e2535',yl:'#f0b90b',ac:'#16c784'};
 function TradingHub({data:d,setData:sd,onClose}){
-  const[tpg,sTpg]=useState("dashboard");
-  const[strat,sStrat]=useState("MECH");
-  const[flt,sFlt]=useState({year:"All",month:"All",session:"All",asset:"All",dow:"All",result:"All"});
-  const[af,sAf]=useState({date:td(),time:"09:00",symbol:"",direction:"long",session:"LDN",rValue:"",setup:"",notes:""});
-  const[csvMsg,sCsvMsg]=useState("");
-  const[addMode,sAddMode]=useState("paste");
-  const[pasteText,sPasteText]=useState("");
+  const[tpg,sTpg]=useState('dashboard');
+  const[strat,sStrat]=useState('MECH');
+  const[flt,sFlt]=useState({year:'All',month:'All',session:'All',asset:'All',dow:'All',result:'All'});
+  const[af,sAf]=useState({date:td(),time:'09:00',symbol:'',direction:'long',session:'LDN',rValue:'',setup:'',notes:''});
+  const[csvMsg,sCsvMsg]=useState('');
+  const[addMode,sAddMode]=useState('paste');
+  const[pasteText,sPasteText]=useState('');
+  const[confirmClear,sConfirmClear]=useState(false);
   const fileRef=useRef();
   const mobile=useIsMobile();
   const ts=d.trades||[];
-  const STRATS={MECH:{c:"#06b6d4",g:"rgba(6,182,212,0.12)"},HYBRID:{c:"#f59e0b",g:"rgba(245,158,11,0.12)"},LRV:{c:"#8b5cf6",g:"rgba(139,92,246,0.12)"}};
+  const STRATS={MECH:{c:'#06b6d4',g:'rgba(6,182,212,0.12)'},HYBRID:{c:'#f59e0b',g:'rgba(245,158,11,0.12)'},LRV:{c:'#8b5cf6',g:'rgba(139,92,246,0.12)'}};
   const sc=STRATS[strat];
-  const sts=ts.filter(t=>(t.strategy||"MECH")===strat);
+  const sts=ts.filter(t=>(t.strategy||'MECH')===strat);
   const yr=[...new Set(sts.map(t=>t.date.slice(0,4)))].sort().reverse();
   const mo=[...new Set(sts.map(t=>t.date.slice(0,7)))].sort().reverse();
   const as=[...new Set(sts.map(t=>t.symbol))].sort();
-  const ss=["LDN","NY","OTHER"];
-  const DNS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  const MNS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const ss=['LDN','NY','OTHER'];
+  const DNS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MNS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   const ft=sts.filter(t=>{
-    if(flt.year!=="All"&&!t.date.startsWith(flt.year))return false;
-    if(flt.month!=="All"&&!t.date.startsWith(flt.month))return false;
-    if(flt.session!=="All"&&t.session!==flt.session)return false;
-    if(flt.asset!=="All"&&t.symbol!==flt.asset)return false;
-    if(flt.dow!=="All"){if(DNS[new Date(t.date+"T12:00:00").getDay()]!==flt.dow)return false;}
-    if(flt.result!=="All"&&t.result!==flt.result.toLowerCase())return false;
+    if(flt.year!=='All'&&!t.date.startsWith(flt.year))return false;
+    if(flt.month!=='All'&&!t.date.startsWith(flt.month))return false;
+    if(flt.session!=='All'&&t.session!==flt.session)return false;
+    if(flt.asset!=='All'&&t.symbol!==flt.asset)return false;
+    if(flt.dow!=='All'){if(DNS[new Date(t.date+'T12:00:00').getDay()]!==flt.dow)return false;}
+    if(flt.result!=='All'&&t.result!==flt.result.toLowerCase())return false;
     return true;
   }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
 
-  const wins=ft.filter(t=>t.result==="win"),losses=ft.filter(t=>t.result==="loss");
+  const wins=ft.filter(t=>t.result==='win'),losses=ft.filter(t=>t.result==='loss');
   const totalR=ft.reduce((a,t)=>a+t.rValue,0);
   const wr=ft.length?wins.length/ft.length*100:0;
   const avgW=wins.length?wins.reduce((a,t)=>a+t.rValue,0)/wins.length:0;
@@ -722,107 +724,112 @@ function TradingHub({data:d,setData:sd,onClose}){
   const exp=ft.length?(wr/100*avgW+(1-wr/100)*avgL):0;
   const pfac=losses.length&&Math.abs(avgL)>0?(Math.abs(avgW)*wins.length)/(Math.abs(avgL)*losses.length):wins.length?Infinity:0;
   let pk=0,mxDD=0,cu=0;for(const t of ft){cu+=t.rValue;if(cu>pk)pk=cu;const dr=pk-cu;if(dr>mxDD)mxDD=dr;}
-  let bS=0,wS=0,cs=0,ct="";for(const t of ft){if(t.result==="win"){cs=ct==="win"?cs+1:1;ct="win";bS=Math.max(bS,cs);}else if(t.result==="loss"){cs=ct==="loss"?cs+1:1;ct="loss";wS=Math.max(wS,cs);}}
+  let bS=0,wS=0,cs=0,ct='';for(const t of ft){if(t.result==='win'){cs=ct==='win'?cs+1:1;ct='win';bS=Math.max(bS,cs);}else if(t.result==='loss'){cs=ct==='loss'?cs+1:1;ct='loss';wS=Math.max(wS,cs);}}
   const l5=[...ft].slice(-5);
   let ec=0;const eqD=ft.map((t,i)=>{ec+=t.rValue;return{n:i+1,r:parseFloat(ec.toFixed(2))};});
 
-  const rf=r=>(r>=0?"+":"")+r.toFixed(1)+"R";
-  const rc=r=>r>0?C.gn:r<0?C.rd:C.sb;
-  const wc=w=>w>=55?C.gn:w>=45?C.ac:C.rd;
-  const resetFlt=()=>sFlt({year:"All",month:"All",session:"All",asset:"All",dow:"All",result:"All"});
+  // R parser: handles "3R","3RR","+1.5R","-1R", plain numbers, em-dash variants
+  const parseR=s=>{if(s===undefined||s===null||s==='')return NaN;const c=s.toString().replace(/[\u2212\u2013\u2014]/g,'-').trim().replace(/[Rr]{1,2}$/, '').replace(/^[Rr]{1,2}/,'').trim();const m=c.match(/^([+\-]?\d+\.?\d*)$/);return m?parseFloat(m[1]):NaN;};
+  const rf=r=>(r>=0?'+':'')+r.toFixed(1)+'R';
+  const rc=r=>r>0?TH.gn:r<0?TH.rd:TH.sb;
+  const wc=w=>w>=55?TH.gn:w>=45?TH.yl:TH.rd;
+  const resetFlt=()=>sFlt({year:'All',month:'All',session:'All',asset:'All',dow:'All',result:'All'});
 
-  const brkBy=key=>Object.entries(ft.reduce((acc,t)=>{const k=t[key]||"?";if(!acc[k])acc[k]={tr:0,wi:0,tR:0};acc[k].tr++;if(t.result==="win")acc[k].wi++;acc[k].tR+=t.rValue;return acc;},{})).map(([k,v])=>({k,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))})).sort((a,b)=>b.tr-a.tr);
-  const brkDow=()=>{const acc={};ft.forEach(t=>{const dw=DNS[new Date(t.date+"T12:00:00").getDay()];if(!acc[dw])acc[dw]={tr:0,wi:0,tR:0};acc[dw].tr++;if(t.result==="win")acc[dw].wi++;acc[dw].tR+=t.rValue;});return Object.entries(acc).map(([k,v])=>({k,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))})).sort((a,b)=>b.tr-a.tr);};
-  const brkMo=()=>{const acc={};ft.forEach(t=>{const mk=t.date.slice(0,7);if(!acc[mk])acc[mk]={tr:0,wi:0,tR:0,lb:MNS[parseInt(t.date.slice(5,7))-1].toUpperCase()};acc[mk].tr++;if(t.result==="win")acc[mk].wi++;acc[mk].tR+=t.rValue;});return Object.entries(acc).map(([,v])=>({k:v.lb,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))}));};
+  const brkBy=key=>Object.entries(ft.reduce((acc,t)=>{const k=t[key]||'?';if(!acc[k])acc[k]={tr:0,wi:0,tR:0};acc[k].tr++;if(t.result==='win')acc[k].wi++;acc[k].tR+=t.rValue;return acc;},{})).map(([k,v])=>({k,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))})).sort((a,b)=>b.tr-a.tr);
+  const brkDow=()=>{const acc={};ft.forEach(t=>{const dw=DNS[new Date(t.date+'T12:00:00').getDay()];if(!acc[dw])acc[dw]={tr:0,wi:0,tR:0};acc[dw].tr++;if(t.result==='win')acc[dw].wi++;acc[dw].tR+=t.rValue;});return Object.entries(acc).map(([k,v])=>({k,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))})).sort((a,b)=>b.tr-a.tr);};
+  const brkMo=()=>{const acc={};ft.forEach(t=>{const mk=t.date.slice(0,7);if(!acc[mk])acc[mk]={tr:0,wi:0,tR:0,lb:MNS[parseInt(t.date.slice(5,7))-1].toUpperCase()};acc[mk].tr++;if(t.result==='win')acc[mk].wi++;acc[mk].tR+=t.rValue;});return Object.entries(acc).map(([,v])=>({k:v.lb,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))}));};
 
-  const addT=()=>{const r=parseFloat(af.rValue);if(!af.symbol.trim()||isNaN(r))return;const res=r>0?"win":r<0?"loss":"be";sd({...d,trades:[...(d.trades||[]),{id:"t"+Date.now(),date:af.date,time:af.time,symbol:af.symbol.trim().toUpperCase(),direction:af.direction,session:af.session,rValue:r,result:res,setup:af.setup,notes:af.notes,strategy:strat}]});sAf({date:td(),time:"09:00",symbol:"",direction:"long",session:"LDN",rValue:"",setup:"",notes:""});sTpg("log");};
+  const addT=()=>{const r=parseR(af.rValue);if(!af.symbol.trim()||isNaN(r))return;const res=r>0?'win':r<0?'loss':'be';sd({...d,trades:[...(d.trades||[]),{id:'t'+Date.now(),date:af.date,time:af.time,symbol:af.symbol.trim().toUpperCase(),direction:af.direction,session:af.session,rValue:r,result:res,setup:af.setup,notes:af.notes,strategy:strat}]});sAf({date:td(),time:'09:00',symbol:'',direction:'long',session:'LDN',rValue:'',setup:'',notes:''});sTpg('log');};
   const delT=id=>sd({...d,trades:(d.trades||[]).filter(t=>t.id!==id)});
-  const importC=e=>{const file=e.target.files[0];if(!file)return;const rdr=new FileReader();rdr.onload=ev=>{const lines=ev.target.result.split("\n").filter(l=>l.trim());const nT=[];for(let i=1;i<lines.length;i++){const c=lines[i].split(",").map(x=>x.trim().replace(/^"|"$/g,""));if(c.length<6)continue;const[dt,ti,sym,dir,sess,rv,...rest]=c;const rv2=parseFloat(rv);if(!dt||!sym||isNaN(rv2))continue;nT.push({id:"t"+Date.now()+i,date:dt,time:ti||"09:00",symbol:sym.toUpperCase(),direction:dir||"long",session:sess||"OTHER",rValue:rv2,result:rv2>0?"win":rv2<0?"loss":"be",setup:rest[0]||"",notes:rest[1]||"",strategy:strat});}if(!nT.length){sCsvMsg("No valid rows. Format: date,time,symbol,direction,session,r");return;}sd({...d,trades:[...(d.trades||[]),...nT]});sCsvMsg(nT.length+" "+strat+" trades imported!");setTimeout(()=>sCsvMsg(""),3000);};rdr.readAsText(file);e.target.value="";};
-  const exportC=()=>{const rows=[["strategy","date","time","symbol","direction","session","r","result","setup","notes"],...sts.map(t=>[t.strategy||strat,t.date,t.time,t.symbol,t.direction,t.session,t.rValue,t.result,t.setup||"",t.notes||""])];const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}));a.download=`protocol_x_${strat.toLowerCase()}_trades.csv`;a.click();};
+  const clearStrat=()=>{sd({...d,trades:(d.trades||[]).filter(t=>(t.strategy||'MECH')!==strat)});sConfirmClear(false);resetFlt();};
+  const importC=e=>{const file=e.target.files[0];if(!file)return;const rdr=new FileReader();rdr.onload=ev=>{const lines=ev.target.result.split('\n').filter(l=>l.trim());const nT=[];for(let i=1;i<lines.length;i++){const c=lines[i].split(',').map(x=>x.trim().replace(/^"|"$/g,''));if(c.length<6)continue;const[dt,ti,sym,dir,sess,rv,...rest]=c;const rv2=parseR(rv);if(!dt||!sym||isNaN(rv2))continue;nT.push({id:'t'+Date.now()+i,date:dt,time:ti||'09:00',symbol:sym.toUpperCase(),direction:dir||'long',session:sess||'OTHER',rValue:rv2,result:rv2>0?'win':rv2<0?'loss':'be',setup:rest[0]||'',notes:rest[1]||'',strategy:strat});}if(!nT.length){sCsvMsg('No valid rows found');return;}sd({...d,trades:[...(d.trades||[]),...nT]});sCsvMsg(nT.length+' trades imported!');setTimeout(()=>sCsvMsg(''),3000);};rdr.readAsText(file);e.target.value='';};
+  const exportC=()=>{const rows=[['strategy','date','time','symbol','direction','session','r','result','setup','notes'],...sts.map(t=>[t.strategy||strat,t.date,t.time,t.symbol,t.direction,t.session,t.rValue,t.result,t.setup||'',t.notes||''])];const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));a.download='hub_'+strat.toLowerCase()+'_trades.csv';a.click();};
 
-  const normDate=s=>{if(!s)return null;s=s.trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const a=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(a){const[,p1,p2,yr]=a;return parseInt(p1)>12?`${yr}-${p2.padStart(2,"0")}-${p1.padStart(2,"0")}`:`${yr}-${p1.padStart(2,"0")}-${p2.padStart(2,"0")}`;}const b=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);if(b)return `${b[1]}-${b[2].padStart(2,"0")}-${b[3].padStart(2,"0")}`;return null;};
-  const parsePaste=raw=>{if(!raw.trim())return[];const lines=raw.trim().split("\n").filter(l=>l.trim());if(!lines.length)return[];const sep=lines[0].includes("\t")?"\t":",";const rows=lines.map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,"")));const h0=rows[0].map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,""));const MAPS={date:["date","day","tradedate"],time:["time","entrytime"],symbol:["symbol","pair","instrument","asset","market","ticker","currency"],direction:["direction","side","type","dir","buysell","longshort"],session:["session","sess","market"],r:["r","rvalue","rr","pnl","pandl","profit","result","risk"],setup:["setup","strategy","pattern","strat","entry","signal"],notes:["notes","note","comment","comments","detail","details","remarks"]};const colMap={date:-1,time:-1,symbol:-1,direction:-1,session:-1,r:-1,setup:-1,notes:-1};let hasHeader=false;for(const[f,aliases]of Object.entries(MAPS)){for(let i=0;i<h0.length;i++){if(aliases.some(a=>h0[i].includes(a))){colMap[f]=i;hasHeader=true;break;}}}if(!hasHeader){Object.assign(colMap,{date:0,time:1,symbol:2,direction:3,session:4,r:5,setup:6,notes:7});}const data=rows.slice(hasHeader?1:0);return data.map((cols,i)=>{const g=k=>colMap[k]>=0&&colMap[k]<cols.length?cols[colMap[k]]:"";const dt=normDate(g("date"));const sym=(g("symbol")||"").toUpperCase().replace(/[^A-Z0-9./]/g,"");const raw=g("r").replace(/\s/g,"");const rv=parseFloat(raw.replace(/[^0-9.\-+]/g,""));const errs=[];if(!dt)errs.push("invalid date");if(!sym)errs.push("missing symbol");if(isNaN(rv))errs.push("invalid R value");const rawDir=(g("direction")||"long").toLowerCase();const dir=rawDir.includes("sell")||rawDir.includes("short")?"short":"long";const rawSess=(g("session")||"OTHER").toUpperCase().trim();const sess=["LDN","NY","ASIA","OTHER"].includes(rawSess)?rawSess:(rawSess.includes("LON")?"LDN":rawSess.includes("NEW")||rawSess.includes("NY")?"NY":rawSess.includes("ASIA")?"ASIA":"OTHER");return{id:"t"+Date.now()+i,date:dt||"",time:g("time")||"09:00",symbol:sym,direction:dir,session:sess,rValue:isNaN(rv)?0:rv,result:isNaN(rv)||rv===0?"be":rv>0?"win":"loss",setup:g("setup")||"",notes:g("notes")||"",valid:errs.length===0,errs};}).filter(r=>r.date||r.symbol);};
-  const FltSel=({l,k,opts})=><div><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:700,marginBottom:4}}>{l}</div><select value={flt[k]} onChange={e=>sFlt({...flt,[k]:e.target.value})} style={{background:C.cd,border:"1px solid "+C.bd,borderRadius:8,padding:"7px 10px",color:C.tx,fontSize:12,cursor:"pointer",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}>{["All",...opts].map(o=><option key={o} value={o}>{o}</option>)}</select></div>;
-  const BrkRows=({rows})=>rows.length===0?<div style={{color:C.sb,fontSize:12,padding:"8px 0"}}>No data</div>:<>{rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid "+C.bd}}><span style={{color:C.tx,fontSize:13,fontWeight:600,flex:1}}>{r.k}</span><div style={{display:"flex",gap:18}}><div style={{textAlign:"right",minWidth:40}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>TRADES</div><div style={{color:C.tx,fontSize:13,fontWeight:700}}>{r.tr}</div></div><div style={{textAlign:"right",minWidth:44}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>WIN%</div><div style={{color:wc(r.wp),fontSize:13,fontWeight:700}}>{r.wp}%</div></div><div style={{textAlign:"right",minWidth:60}}><div style={{color:C.sb,fontSize:8,letterSpacing:1,fontWeight:600}}>TOTAL R</div><div style={{color:rc(r.tR),fontSize:13,fontWeight:700}}>{rf(r.tR)}</div></div></div></div>)}</>;
-  const TSC=({label,value,sub,glow})=><div style={{background:C.cd,border:"1px solid "+C.bd,borderRadius:14,padding:"16px 20px",flex:1,minWidth:130,...(glow?{boxShadow:"0 0 24px "+glow}:{})}}><div style={{color:C.sb,fontSize:8.5,letterSpacing:1.8,fontWeight:700,marginBottom:8,fontFamily:"Outfit,sans-serif"}}>{label}</div><div style={{fontFamily:"Outfit,sans-serif",lineHeight:1}}>{value}</div>{sub&&<div style={{marginTop:8}}>{sub}</div>}</div>;
-  const navItems=[{id:"dashboard",l:"📊 Dashboard"},{id:"log",l:"📋 Trade Log"},{id:"breakdowns",l:"🔍 Breakdowns"},{id:"add",l:"+ Log Trade"}];
-  const FltBar=({extra=[]})=><div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap",alignItems:"flex-end"}}><FltSel l="YEAR" k="year" opts={yr}/><FltSel l="MONTH" k="month" opts={mo}/><FltSel l="SESSION" k="session" opts={ss}/><FltSel l="ASSET" k="asset" opts={as}/>{extra.map((e,i)=><React.Fragment key={i}>{e}</React.Fragment>)}<button onClick={resetFlt} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"8px 14px",color:C.sb,cursor:"pointer",fontSize:12,fontWeight:600,alignSelf:"flex-end"}}>Reset</button></div>;
+  const normDate=s=>{if(!s)return null;s=s.trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const a=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(a){const[,p1,p2,y]=a;return parseInt(p1)>12?`${y}-${p2.padStart(2,'0')}-${p1.padStart(2,'0')}`:`${y}-${p1.padStart(2,'0')}-${p2.padStart(2,'0')}`;}const b=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);if(b)return `${b[1]}-${b[2].padStart(2,'0')}-${b[3].padStart(2,'0')}`;return null;};
+  const parsePaste=raw=>{if(!raw.trim())return[];const lines=raw.trim().split('\n').filter(l=>l.trim());if(!lines.length)return[];const sep=lines[0].includes('\t')?'\t':',';const rows=lines.map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,'')));const h0=rows[0].map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,''));const MAPS={date:['date','day','tradedate'],time:['time','entrytime'],symbol:['symbol','pair','instrument','asset','market','ticker','currency'],direction:['direction','side','type','dir','buysell','longshort'],session:['session','sess'],r:['r','rvalue','rr','rratio','pnl','pandl','profit'],setup:['setup','pattern','strat','entry','signal','strategy'],notes:['notes','note','comment','comments','detail','remarks']};const colMap={date:-1,time:-1,symbol:-1,direction:-1,session:-1,r:-1,setup:-1,notes:-1};let hasHeader=false;for(const[f,aliases]of Object.entries(MAPS)){for(let i=0;i<h0.length;i++){if(aliases.some(a=>h0[i].includes(a))){colMap[f]=i;hasHeader=true;break;}}}if(!hasHeader){Object.assign(colMap,{date:0,time:1,symbol:2,direction:3,session:4,r:5,setup:6,notes:7});}const data=rows.slice(hasHeader?1:0);return data.map((cols,i)=>{const g=k=>colMap[k]>=0&&colMap[k]<cols.length?cols[colMap[k]]:'';const dt=normDate(g('date'));const sym=(g('symbol')||'').toUpperCase().replace(/[^A-Z0-9./]/g,'');const rv=parseR(g('r'));const errs=[];if(!dt)errs.push('invalid date');if(!sym)errs.push('missing symbol');if(isNaN(rv))errs.push('invalid R value');const rawDir=(g('direction')||'long').toLowerCase();const dir=rawDir.includes('sell')||rawDir.includes('short')?'short':'long';const rawSess=(g('session')||'OTHER').toUpperCase().trim();const sess=['LDN','NY','OTHER'].includes(rawSess)?rawSess:(rawSess.includes('LON')?'LDN':rawSess.includes('NY')||rawSess.includes('NEW')?'NY':'OTHER');return{id:'t'+Date.now()+i,date:dt||'',time:g('time')||'09:00',symbol:sym,direction:dir,session:sess,rValue:isNaN(rv)?0:rv,result:isNaN(rv)||rv===0?'be':rv>0?'win':'loss',setup:g('setup')||'',notes:g('notes')||'',valid:errs.length===0,errs};}).filter(r=>r.date||r.symbol);};
 
-  return <div style={{position:"fixed",inset:0,background:C.bg,zIndex:200,display:"flex",flexDirection:"column",fontFamily:"Plus Jakarta Sans,sans-serif"}}>
-    {/* Portal Header */}
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 24px",height:58,borderBottom:"1px solid "+C.bd,background:"rgba(8,9,13,0.98)",backdropFilter:"blur(20px)",flexShrink:0,zIndex:10}}>
-      <div style={{display:"flex",alignItems:"center",gap:14}}>
-        <button onClick={onClose} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"6px 12px",color:C.sb,cursor:"pointer",fontSize:11,fontWeight:600,display:"flex",alignItems:"center",gap:5}}>← Protocol X</button>
-        <div style={{width:1,height:20,background:C.bd}}/>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#10b981,#059669)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📈</div>
-          <div><div style={{color:C.tx,fontWeight:800,fontSize:14,fontFamily:"Outfit,sans-serif",letterSpacing:0.5}}>TRADING HUB</div><div style={{color:"#10b981",fontSize:8.5,letterSpacing:2,fontWeight:600}}>PROTOCOL X</div></div>
+  const FS=({l,k,opts})=><div><div style={{color:TH.sb,fontSize:8,letterSpacing:1.8,fontWeight:700,marginBottom:4,fontFamily:'Outfit,sans-serif'}}>{l}</div><select value={flt[k]} onChange={e=>sFlt({...flt,[k]:e.target.value})} style={{background:TH.mt,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'7px 10px',color:TH.tx,fontSize:12,cursor:'pointer',outline:'none',fontFamily:'Plus Jakarta Sans,sans-serif'}}>{['All',...opts].map(o=><option key={o} value={o}>{o}</option>)}</select></div>;
+  const BrkRow=({rows})=>rows.length===0?<div style={{color:TH.sb,fontSize:12,padding:'12px 0'}}>No trades recorded</div>:<>{rows.map(r=><div key={r.k} style={{display:'flex',alignItems:'center',padding:'11px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}}><span style={{color:TH.tx,fontSize:13,fontWeight:700,flex:1,fontFamily:'Outfit,sans-serif'}}>{r.k}</span><div style={{display:'flex',gap:24,alignItems:'center'}}><div style={{textAlign:'right',minWidth:44}}><div style={{color:TH.sb,fontSize:7.5,letterSpacing:1.5,fontWeight:700,marginBottom:2}}>TRADES</div><div style={{color:TH.tx,fontSize:14,fontWeight:800,fontFamily:'Outfit,sans-serif'}}>{r.tr}</div></div><div style={{textAlign:'right',minWidth:50}}><div style={{color:TH.sb,fontSize:7.5,letterSpacing:1.5,fontWeight:700,marginBottom:2}}>WIN%</div><div style={{color:wc(r.wp),fontSize:14,fontWeight:800,fontFamily:'Outfit,sans-serif'}}>{r.wp}%</div></div><div style={{textAlign:'right',minWidth:64}}><div style={{color:TH.sb,fontSize:7.5,letterSpacing:1.5,fontWeight:700,marginBottom:2}}>TOTAL R</div><div style={{color:rc(r.tR),fontSize:14,fontWeight:800,fontFamily:'Outfit,sans-serif'}}>{rf(r.tR)}</div></div></div></div>)}</>;
+  const TSC=({label,value,sub,glow})=><div style={{background:TH.card,border:'1px solid rgba(255,255,255,0.07)',borderRadius:8,padding:'18px 20px',flex:1,minWidth:130,...(glow?{boxShadow:'0 0 28px '+glow}:{})}}><div style={{color:TH.sb,fontSize:7.5,letterSpacing:2,fontWeight:700,marginBottom:10,fontFamily:'Outfit,sans-serif'}}>{label}</div><div style={{fontFamily:'Outfit,sans-serif',lineHeight:1}}>{value}</div>{sub&&<div style={{marginTop:10}}>{sub}</div>}</div>;
+  const FBar=({extra=[]})=><div style={{display:'flex',gap:10,marginBottom:22,flexWrap:'wrap',alignItems:'flex-end'}}><FS l='YEAR' k='year' opts={yr}/><FS l='MONTH' k='month' opts={mo}/><FS l='SESSION' k='session' opts={ss}/><FS l='ASSET' k='asset' opts={as}/>{extra}<button onClick={resetFlt} style={{background:TH.mt,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'8px 14px',color:TH.sb,cursor:'pointer',fontSize:11,fontWeight:600,alignSelf:'flex-end',fontFamily:'Plus Jakarta Sans,sans-serif'}}>Reset Filters</button></div>;
+  const navItems=[{id:'dashboard',l:'DASHBOARD'},{id:'log',l:'TRADE LOG'},{id:'breakdowns',l:'BREAKDOWNS'},{id:'add',l:'+ LOG TRADE'}];
+
+  return <div style={{position:'fixed',inset:0,background:TH.bg,zIndex:200,display:'flex',flexDirection:'column',fontFamily:'Plus Jakarta Sans,sans-serif'}}>
+    {/* HEADER */}
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 28px',height:60,borderBottom:'1px solid rgba(255,255,255,0.06)',background:TH.hd,flexShrink:0,zIndex:10}}>
+      <div style={{display:'flex',alignItems:'center',gap:16}}>
+        <button onClick={onClose} style={{background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'6px 12px',color:TH.sb,cursor:'pointer',fontSize:11,fontWeight:600,letterSpacing:0.5}}>← PX</button>
+        <div style={{width:1,height:22,background:'rgba(255,255,255,0.07)'}}/>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={TH.gn} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <div style={{color:TH.tx,fontWeight:900,fontSize:15,fontFamily:'Outfit,sans-serif',letterSpacing:2}}>TRADING HUB</div>
         </div>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        {csvMsg&&<div style={{color:C.gn,fontSize:11,fontWeight:600,padding:"6px 12px",background:C.gg,borderRadius:8,border:"1px solid rgba(16,185,129,0.2)"}}>{csvMsg}</div>}
-        <input type="file" ref={fileRef} accept=".csv" style={{display:"none"}} onChange={importC}/>
-        <button onClick={exportC} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"7px 14px",color:C.tx,cursor:"pointer",fontSize:11,fontWeight:600}}>↓ Export CSV</button>
-        <button onClick={()=>fileRef.current?.click()} style={{background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",cursor:"pointer",fontSize:11,fontWeight:700}}>+ Import CSV</button>
-        <button onClick={()=>sTpg("add")} style={{background:"linear-gradient(135deg,#f59e0b,#f97316)",border:"none",borderRadius:8,padding:"7px 14px",color:"#000",cursor:"pointer",fontSize:11,fontWeight:800}}>+ Log Trade</button>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        {csvMsg&&<div style={{color:TH.gn,fontSize:11,fontWeight:700,padding:'5px 12px',background:'rgba(22,199,132,0.1)',borderRadius:6,border:'1px solid rgba(22,199,132,0.2)'}}>{csvMsg}</div>}
+        <input type='file' ref={fileRef} accept='.csv' style={{display:'none'}} onChange={importC}/>
+        <button onClick={exportC} style={{background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'7px 14px',color:TH.sb,cursor:'pointer',fontSize:11,fontWeight:600,letterSpacing:0.5}}>↓ EXPORT</button>
+        <button onClick={()=>fileRef.current?.click()} style={{background:'rgba(22,199,132,0.1)',border:'1px solid rgba(22,199,132,0.25)',borderRadius:6,padding:'7px 14px',color:TH.gn,cursor:'pointer',fontSize:11,fontWeight:700,letterSpacing:0.5}}>↑ IMPORT CSV</button>
+        <button onClick={()=>sTpg('add')} style={{background:TH.gn,border:'none',borderRadius:6,padding:'7px 16px',color:'#000',cursor:'pointer',fontSize:11,fontWeight:900,letterSpacing:1}}>+ LOG TRADE</button>
       </div>
     </div>
-    {/* Sub-nav */}
-    <div style={{display:"flex",gap:2,padding:"10px 24px",borderBottom:"1px solid "+C.bd,background:"rgba(8,9,13,0.95)",flexShrink:0}}>
-      {navItems.map(n=><button key={n.id} onClick={()=>sTpg(n.id)} style={{padding:"7px 16px",borderRadius:8,border:tpg===n.id?"1px solid "+sc.c:"1px solid transparent",background:tpg===n.id?sc.g:"transparent",color:tpg===n.id?sc.c:C.sb,fontSize:12,fontWeight:tpg===n.id?700:500,cursor:"pointer",fontFamily:"Plus Jakarta Sans,sans-serif",transition:"all 0.15s"}}>{n.l}</button>)}
-      <div style={{flex:1}}/>
-      <div style={{color:C.sb,fontSize:11,alignSelf:"center"}}>{sts.length} {strat} trades · filtered: {ft.length}</div>
-    </div>
-    {/* Strategy Selector */}
-    <div style={{display:"flex",gap:0,borderBottom:"1px solid "+C.bd,background:"rgba(8,9,13,0.92)",flexShrink:0,padding:"0 24px"}}>
+
+    {/* STRATEGY + NAV BAR */}
+    <div style={{display:'flex',borderBottom:'1px solid rgba(255,255,255,0.06)',background:TH.hd,flexShrink:0,padding:'0 28px',alignItems:'center'}}>
       {Object.entries(STRATS).map(([sk,sv])=>{
-        const stTrades=ts.filter(t=>(t.strategy||"MECH")===sk);
-        const stR=stTrades.reduce((a,t)=>a+t.rValue,0);
-        const stWr=stTrades.length?Math.round(stTrades.filter(t=>t.result==="win").length/stTrades.length*100):0;
+        const stT=ts.filter(t=>(t.strategy||'MECH')===sk);
+        const stR=stT.reduce((a,t)=>a+t.rValue,0);
+        const stWr=stT.length?Math.round(stT.filter(t=>t.result==='win').length/stT.length*100):0;
         const active=strat===sk;
-        return <button key={sk} onClick={()=>{sStrat(sk);sFlt({year:"All",month:"All",session:"All",asset:"All",dow:"All",result:"All"});}} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 24px",border:"none",background:"transparent",cursor:"pointer",borderBottom:active?"2px solid "+sv.c:"2px solid transparent",transition:"all 0.15s",marginBottom:"-1px"}}>
-          <div style={{textAlign:"left"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{color:active?sv.c:C.sb,fontSize:14,fontWeight:900,fontFamily:"Outfit,sans-serif",letterSpacing:1}}>{sk}</span>
-              {active&&<span style={{background:sv.g,color:sv.c,fontSize:8,fontWeight:800,padding:"2px 6px",borderRadius:4,letterSpacing:1}}>ACTIVE</span>}
+        return <button key={sk} onClick={()=>{sStrat(sk);resetFlt();sConfirmClear(false);}} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 22px',border:'none',background:'transparent',cursor:'pointer',borderBottom:active?'2px solid '+sv.c:'2px solid transparent',marginBottom:'-1px',transition:'all 0.15s'}}>
+          <div style={{textAlign:'left'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+              <span style={{color:active?sv.c:TH.sb,fontSize:13,fontWeight:900,fontFamily:'Outfit,sans-serif',letterSpacing:2}}>{sk}</span>
+              {active&&<span style={{background:sv.g,color:sv.c,fontSize:7,fontWeight:800,padding:'2px 6px',borderRadius:3,letterSpacing:1.5}}>ACTIVE</span>}
             </div>
-            <div style={{display:"flex",gap:10,marginTop:3}}>
-              <span style={{color:C.sb,fontSize:10}}>{stTrades.length} trades</span>
-              {stTrades.length>0&&<><span style={{color:stR>0?"#10b981":stR<0?"#ef4444":C.sb,fontSize:10,fontWeight:700}}>{(stR>=0?"+":"")+stR.toFixed(1)}R</span><span style={{color:stWr>=50?"#10b981":C.sb,fontSize:10}}>{stWr}% win</span></>}
-            </div>
+            <div style={{display:'flex',gap:10}}><span style={{color:TH.sb,fontSize:10}}>{stT.length} trades</span>{stT.length>0&&<><span style={{color:stR>0?TH.gn:stR<0?TH.rd:TH.sb,fontSize:10,fontWeight:700}}>{(stR>=0?'+':'')+stR.toFixed(1)}R</span><span style={{color:stWr>=50?TH.gn:TH.rd,fontSize:10}}>{stWr}% wr</span></>}</div>
           </div>
         </button>;
       })}
+      <div style={{flex:1}}/>
+      <div style={{display:'flex',gap:2}}>
+        {navItems.map(n=><button key={n.id} onClick={()=>sTpg(n.id)} style={{padding:'8px 14px',borderRadius:6,border:'none',background:tpg===n.id?sc.g:'transparent',color:tpg===n.id?sc.c:TH.sb,fontSize:10,fontWeight:tpg===n.id?900:500,cursor:'pointer',letterSpacing:1.2,fontFamily:'Outfit,sans-serif',transition:'all 0.12s'}}>{n.l}</button>)}
+      </div>
     </div>
-    {/* Content */}
-    <div style={{flex:1,overflowY:"auto",padding:"20px 24px"}}>
-    <div style={{maxWidth:1200,margin:"0 auto"}}>
+
+    {/* CONTENT */}
+    <div style={{flex:1,overflowY:'auto',padding:'24px 28px'}}>
+    <div style={{maxWidth:1280,margin:'0 auto'}}>
 
     {/* DASHBOARD */}
-    {tpg==="dashboard"&&<div>
-      <FltBar extra={[<FltSel l="DAY" k="dow" opts={DNS.slice(1).concat(DNS[0])}/>,<FltSel l="RESULT" k="result" opts={["Win","Loss","BE"]}/>]}/>
-      {ft.length===0?<div style={{textAlign:"center",padding:"60px 0"}}><div style={{fontSize:48,marginBottom:16}}>📊</div><div style={{color:C.tx,fontSize:18,fontWeight:700,marginBottom:8,fontFamily:"Outfit,sans-serif"}}>Trading Journal Empty</div><div style={{color:C.sb,fontSize:13,marginBottom:24}}>Log your first trade or import a CSV to see your stats</div><div style={{display:"flex",gap:10,justifyContent:"center"}}><Bt onClick={()=>sTpg("add")}>+ Log First Trade</Bt><Bt v="secondary" onClick={()=>fileRef.current?.click()}>Import CSV</Bt></div></div>:<>
-      <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
-        <TSC label="TOTAL R" value={<span style={{color:rc(totalR),fontSize:30,fontWeight:900}}>{rf(totalR)}</span>} sub={<div style={{color:C.sb,fontSize:11}}>{ft.length} trades</div>} glow={totalR>0?"rgba(16,185,129,0.15)":"rgba(239,68,68,0.1)"}/>
-        <TSC label="WIN RATE" value={<span style={{color:wc(wr),fontSize:30,fontWeight:900}}>{wr.toFixed(1)}%</span>} sub={<div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><span style={{color:C.gn,fontSize:11,fontWeight:700}}>{wins.length}W</span><span style={{color:C.sb,fontSize:11}}>/</span><span style={{color:C.rd,fontSize:11,fontWeight:700}}>{losses.length}L</span><div style={{flex:1,height:4,background:C.sf,borderRadius:2,overflow:"hidden",maxWidth:60}}><div style={{height:"100%",background:"linear-gradient(90deg,"+C.gn+",#059669)",width:Math.round(wr)+"%",borderRadius:2}}/></div></div>}/>
-        <TSC label="AVG WIN / AVG LOSS" value={<span style={{fontSize:20,fontWeight:900}}><span style={{color:C.gn}}>{rf(avgW)}</span><span style={{color:C.sb,fontSize:16}}> / </span><span style={{color:C.rd}}>{rf(avgL)}</span></span>}/>
-        <TSC label="EXPECTANCY" value={<span style={{color:rc(exp),fontSize:28,fontWeight:900}}>{rf(exp)}</span>} sub={<div style={{color:C.sb,fontSize:11,marginTop:2}}>per trade</div>}/>
-        <TSC label="PROFIT FACTOR" value={<span style={{color:pfac>=1.5?C.gn:pfac>=1?C.ac:C.rd,fontSize:28,fontWeight:900}}>{isFinite(pfac)?pfac.toFixed(2):"∞"}</span>}/>
-        <TSC label="MAX DRAWDOWN" value={<span style={{color:C.rd,fontSize:28,fontWeight:900}}>-{mxDD.toFixed(1)}R</span>}/>
+    {tpg==='dashboard'&&<div>
+      <FBar extra={[<FS l='DAY' k='dow' opts={DNS.slice(1).concat(DNS[0])}/>,<FS l='RESULT' k='result' opts={['Win','Loss','BE']}/>]}/>
+      {ft.length===0?<div style={{textAlign:'center',padding:'80px 0'}}>
+        <div style={{width:64,height:64,borderRadius:16,background:'rgba(22,199,132,0.08)',border:'1px solid rgba(22,199,132,0.15)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={TH.gn} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div style={{color:TH.tx,fontSize:20,fontWeight:900,marginBottom:8,fontFamily:'Outfit,sans-serif',letterSpacing:1}}>{strat} — NO TRADES YET</div>
+        <div style={{color:TH.sb,fontSize:13,marginBottom:28}}>Log your first trade or paste from Google Sheets</div>
+        <button onClick={()=>sTpg('add')} style={{background:TH.gn,border:'none',borderRadius:6,padding:'10px 24px',color:'#000',cursor:'pointer',fontSize:12,fontWeight:900,letterSpacing:1,fontFamily:'Outfit,sans-serif'}}>+ LOG FIRST TRADE</button>
+      </div>:<>
+      <div style={{display:'flex',gap:8,marginBottom:8,flexWrap:'wrap'}}>
+        <TSC label='TOTAL R' value={<span style={{color:rc(totalR),fontSize:36,fontWeight:900}}>{rf(totalR)}</span>} sub={<div style={{color:TH.sb,fontSize:11,marginTop:4}}>{ft.length} trades</div>} glow={totalR>0?'rgba(22,199,132,0.12)':'rgba(234,57,67,0.1)'}/>
+        <TSC label='WIN RATE' value={<span style={{color:wc(wr),fontSize:36,fontWeight:900}}>{wr.toFixed(1)}%</span>} sub={<div style={{display:'flex',alignItems:'center',gap:8,marginTop:6}}><span style={{color:TH.gn,fontSize:11,fontWeight:700}}>{wins.length}W</span><span style={{color:TH.sb,fontSize:11}}>/</span><span style={{color:TH.rd,fontSize:11,fontWeight:700}}>{losses.length}L</span><div style={{height:3,background:'rgba(255,255,255,0.08)',borderRadius:2,overflow:'hidden',flex:1,maxWidth:50}}><div style={{height:'100%',background:TH.gn,width:Math.round(wr)+'%',borderRadius:2}}/></div></div>}/>
+        <TSC label='AVG WIN / AVG LOSS' value={<span style={{fontSize:22,fontWeight:900}}><span style={{color:TH.gn}}>{rf(avgW)}</span><span style={{color:TH.sb,fontSize:18}}> / </span><span style={{color:TH.rd}}>{rf(avgL)}</span></span>}/>
+        <TSC label='EXPECTANCY' value={<span style={{color:rc(exp),fontSize:34,fontWeight:900}}>{rf(exp)}</span>} sub={<div style={{color:TH.sb,fontSize:11,marginTop:4}}>per trade</div>}/>
+        <TSC label='PROFIT FACTOR' value={<span style={{color:pfac>=1.5?TH.gn:pfac>=1?TH.yl:TH.rd,fontSize:34,fontWeight:900}}>{isFinite(pfac)?pfac.toFixed(2):'∞'}</span>}/>
+        <TSC label='MAX DRAWDOWN' value={<span style={{color:TH.rd,fontSize:34,fontWeight:900}}>-{mxDD.toFixed(1)}R</span>}/>
       </div>
-      <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
-        <TSC label="BEST STREAK" value={<span style={{color:C.gn,fontSize:28,fontWeight:900}}>{bS}W</span>} sub={<div style={{color:C.sb,fontSize:11,marginTop:2}}>Worst: {wS}L</div>}/>
-        <TSC label="LAST 5 TRADES" value={<div style={{display:"flex",gap:8,alignItems:"center",marginTop:4}}>{l5.length===0?<span style={{color:C.sb,fontSize:13}}>–</span>:l5.map((t,i)=><div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><div style={{width:14,height:14,borderRadius:"50%",background:t.result==="win"?C.gn:t.result==="loss"?C.rd:C.sb}}/><span style={{color:C.sb,fontSize:9,fontWeight:600,fontFamily:"Outfit,sans-serif"}}>{rf(t.rValue)}</span></div>)}</div>} sub={l5.length>0&&<div style={{color:C.sb,fontSize:10,marginTop:4}}>{l5.map(t=>rf(t.rValue)).join(", ")}</div>}/>
+      <div style={{display:'flex',gap:8,marginBottom:22,flexWrap:'wrap'}}>
+        <TSC label='BEST STREAK' value={<span style={{color:TH.gn,fontSize:34,fontWeight:900}}>{bS}W</span>} sub={<div style={{color:TH.sb,fontSize:11,marginTop:4}}>Worst streak: {wS}L</div>}/>
+        <TSC label='LAST 5 TRADES' value={<div style={{display:'flex',gap:10,alignItems:'center',marginTop:8}}>{l5.length===0?<span style={{color:TH.sb,fontSize:13}}>–</span>:l5.map((t,i)=><div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}><div style={{width:14,height:14,borderRadius:'50%',background:t.result==='win'?TH.gn:t.result==='loss'?TH.rd:TH.sb}}/><span style={{color:TH.sb,fontSize:9,fontFamily:'Outfit,sans-serif',fontWeight:600}}>{rf(t.rValue)}</span></div>)}</div>} sub={l5.length>0&&<div style={{color:TH.sb,fontSize:10,marginTop:4,fontFamily:'Outfit,sans-serif'}}>{l5.map(t=>rf(t.rValue)).join(', ')}</div>}/>
       </div>
-      <div style={{background:C.cd,border:"1px solid "+C.bd,borderRadius:14,padding:"20px 20px 14px"}}>
-        <div style={{color:C.sb,fontSize:8.5,letterSpacing:2,fontWeight:700,marginBottom:14}}>EQUITY CURVE (CUMULATIVE R)</div>
-        <ResponsiveContainer width="100%" height={220}>
+      <div style={{background:TH.card,border:'1px solid rgba(255,255,255,0.07)',borderRadius:8,padding:'22px 22px 14px'}}>
+        <div style={{color:TH.sb,fontSize:8,letterSpacing:2.5,fontWeight:700,marginBottom:14,fontFamily:'Outfit,sans-serif'}}>EQUITY CURVE (CUMULATIVE R)</div>
+        <ResponsiveContainer width='100%' height={230}>
           <AreaChart data={eqD} margin={{top:5,right:10,left:0,bottom:0}}>
-            <defs><linearGradient id="eqGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs>
-            <XAxis dataKey="n" hide/>
-            <YAxis axisLine={false} tickLine={false} tick={{fill:C.sb,fontSize:10}} tickFormatter={v=>v+"R"} width={35}/>
-            <Tooltip contentStyle={{background:C.gl,border:"1px solid "+C.bd,borderRadius:10,color:C.tx,fontSize:11}} formatter={v=>[v+"R","Cumulative R"]}/>
-            <Area type="monotone" dataKey="r" stroke="#10b981" strokeWidth={2.5} fill="url(#eqGrad)"/>
+            <defs><linearGradient id='eqG' x1='0' y1='0' x2='0' y2='1'><stop offset='5%' stopColor='#16c784' stopOpacity={0.2}/><stop offset='95%' stopColor='#16c784' stopOpacity={0}/></linearGradient></defs>
+            <XAxis dataKey='n' hide/><YAxis axisLine={false} tickLine={false} tick={{fill:TH.sb,fontSize:10,fontFamily:'Outfit,sans-serif'}} tickFormatter={v=>v+'R'} width={38}/>
+            <Tooltip contentStyle={{background:'#0d1020',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,color:TH.tx,fontSize:11}} formatter={v=>[v+'R','Cumulative R']}/>
+            <Area type='monotone' dataKey='r' stroke='#16c784' strokeWidth={2.5} fill='url(#eqG)'/>
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -830,139 +837,118 @@ function TradingHub({data:d,setData:sd,onClose}){
     </div>}
 
     {/* BREAKDOWNS */}
-    {tpg==="breakdowns"&&<div>
-      <FltBar/>
-      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
-        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>SESSION BREAKDOWN</div><BrkRows rows={brkBy("session")}/></Cd>
-        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>ASSET BREAKDOWN</div><BrkRows rows={brkBy("symbol")}/></Cd>
-        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>DAY OF WEEK</div><BrkRows rows={brkDow()}/></Cd>
+    {tpg==='breakdowns'&&<div>
+      <FBar/>
+      <div style={{color:TH.sb,fontSize:8,letterSpacing:2.5,fontWeight:700,marginBottom:16,fontFamily:'Outfit,sans-serif'}}>BREAKDOWNS — {strat}</div>
+      <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:12}}>
+        {[{t:'SESSION BREAKDOWN',rows:brkBy('session')},{t:'ASSET BREAKDOWN',rows:brkBy('symbol')},{t:'DAY OF WEEK',rows:brkDow()}].map(({t,rows})=><div key={t} style={{flex:1,minWidth:260,background:TH.card,border:'1px solid rgba(255,255,255,0.07)',borderRadius:8,padding:'20px 22px'}}><div style={{color:TH.sb,fontSize:8,letterSpacing:2,fontWeight:700,marginBottom:14,fontFamily:'Outfit,sans-serif'}}>{t}</div><BrkRow rows={rows}/></div>)}
       </div>
-      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>MONTHLY BREAKDOWN</div><BrkRows rows={brkMo()}/></Cd>
-        <Cd style={{flex:1,minWidth:260}}><div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700,marginBottom:14}}>DIRECTION BREAKDOWN</div><BrkRows rows={brkBy("direction")}/></Cd>
+      <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+        {[{t:'MONTHLY BREAKDOWN',rows:brkMo()},{t:'DIRECTION BREAKDOWN',rows:brkBy('direction')}].map(({t,rows})=><div key={t} style={{flex:1,minWidth:260,background:TH.card,border:'1px solid rgba(255,255,255,0.07)',borderRadius:8,padding:'20px 22px'}}><div style={{color:TH.sb,fontSize:8,letterSpacing:2,fontWeight:700,marginBottom:14,fontFamily:'Outfit,sans-serif'}}>{t}</div><BrkRow rows={rows}/></div>)}
       </div>
     </div>}
 
     {/* TRADE LOG */}
-    {tpg==="log"&&<div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-        <div><div style={{color:C.sb,fontSize:8.5,letterSpacing:2,fontWeight:700}}>TRADE LOG</div><div style={{color:C.tx,fontSize:13,fontWeight:700,marginTop:2}}>{ft.length} trades · Total R: <span style={{color:rc(totalR)}}>{rf(totalR)}</span></div></div>
-        <div style={{display:"flex",gap:8}}>
-          <FltSel l="ASSET" k="asset" opts={as}/>
-          <FltSel l="SESSION" k="session" opts={ss}/>
-          <FltSel l="RESULT" k="result" opts={["Win","Loss","BE"]}/>
-          <button onClick={resetFlt} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:8,padding:"7px 10px",color:C.sb,cursor:"pointer",fontSize:11,fontWeight:600,alignSelf:"flex-end"}}>Reset</button>
-        </div>
+    {tpg==='log'&&<div>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18,flexWrap:'wrap'}}>
+        <div style={{flex:1}}><div style={{color:TH.sb,fontSize:8,letterSpacing:2,fontWeight:700,fontFamily:'Outfit,sans-serif'}}>{strat} · TRADE LOG</div><div style={{color:TH.tx,fontSize:13,fontWeight:700,marginTop:3}}>{sts.length} total · {ft.length} shown · <span style={{color:rc(totalR)}}>{rf(totalR)}</span></div></div>
+        <FS l='SESSION' k='session' opts={ss}/>
+        <FS l='ASSET' k='asset' opts={as}/>
+        <FS l='RESULT' k='result' opts={['Win','Loss','BE']}/>
+        <button onClick={resetFlt} style={{background:TH.mt,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'7px 12px',color:TH.sb,cursor:'pointer',fontSize:10,fontWeight:600,alignSelf:'flex-end'}}>Reset</button>
+        {!confirmClear
+          ?<button onClick={()=>sConfirmClear(true)} style={{background:'rgba(234,57,67,0.08)',border:'1px solid rgba(234,57,67,0.2)',borderRadius:6,padding:'7px 12px',color:TH.rd,cursor:'pointer',fontSize:10,fontWeight:700,alignSelf:'flex-end',letterSpacing:0.5}}>🗑 Clear {strat}</button>
+          :<div style={{display:'flex',gap:6,alignItems:'flex-end'}}><span style={{color:TH.rd,fontSize:11,fontWeight:600,alignSelf:'center'}}>Delete ALL {strat} trades?</span><button onClick={clearStrat} style={{background:TH.rd,border:'none',borderRadius:6,padding:'7px 12px',color:'#fff',cursor:'pointer',fontSize:10,fontWeight:900}}>Confirm Delete</button><button onClick={()=>sConfirmClear(false)} style={{background:TH.mt,border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'7px 10px',color:TH.sb,cursor:'pointer',fontSize:10}}>Cancel</button></div>}
       </div>
-      {ft.length===0?<Cd style={{textAlign:"center",padding:30}}><div style={{color:C.sb,fontSize:13}}>No trades match filters</div></Cd>:<div>
-        <div style={{display:"grid",gridTemplateColumns:"90px 1fr 80px 70px 70px 60px 70px 30px",gap:8,padding:"6px 16px",marginBottom:4}}>{["DATE","SYMBOL","SESSION","DIR","SETUP","R","RESULT",""].map(h=><div key={h} style={{color:C.sb,fontSize:8.5,letterSpacing:1.5,fontWeight:700}}>{h}</div>)}</div>
-        {[...ft].reverse().map(t=><div key={t.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 80px 70px 70px 60px 70px 30px",gap:8,padding:"11px 16px",borderRadius:10,marginBottom:4,background:C.cd,border:"1px solid "+C.bd,alignItems:"center"}}>
-          <div><div style={{color:C.tx,fontSize:11,fontWeight:600}}>{t.date}</div><div style={{color:C.sb,fontSize:9}}>{t.time}</div></div>
-          <div><div style={{color:C.tx,fontWeight:800,fontSize:13,fontFamily:"Outfit,sans-serif"}}>{t.symbol}</div>{t.notes&&<div style={{color:C.sb,fontSize:10,marginTop:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",maxWidth:200}}>{t.notes}</div>}</div>
-          <div style={{color:C.sb,fontSize:12,fontWeight:600}}>{t.session}</div>
-          <div style={{color:t.direction==="long"?C.gn:C.rd,fontSize:11,fontWeight:700,textTransform:"uppercase"}}>{t.direction}</div>
-          <div>{t.setup?<span style={{background:C.ag,color:C.ac,padding:"2px 7px",borderRadius:5,fontSize:9,fontWeight:700}}>{t.setup}</span>:<span style={{color:C.mt}}>–</span>}</div>
-          <div style={{color:rc(t.rValue),fontWeight:900,fontSize:14,fontFamily:"Outfit,sans-serif"}}>{rf(t.rValue)}</div>
-          <div style={{color:t.result==="win"?C.gn:t.result==="loss"?C.rd:C.sb,fontSize:9,fontWeight:700,letterSpacing:1}}>{t.result.toUpperCase()}</div>
-          <button onClick={()=>delT(t.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.mt,fontSize:16,padding:0}}>×</button>
+      {ft.length===0?<div style={{textAlign:'center',padding:'40px 0',color:TH.sb,fontSize:13}}>No trades match the current filters</div>:<div>
+        <div style={{display:'grid',gridTemplateColumns:'90px 80px 75px 56px 60px 64px 70px 1fr 28px',gap:6,padding:'6px 16px',marginBottom:2,borderBottom:'1px solid rgba(255,255,255,0.06)'}}>{['DATE','TIME','SYMBOL','DIR','SESSION','R','RESULT','SETUP / NOTES',''].map(h=><div key={h} style={{color:TH.sb,fontSize:7.5,letterSpacing:1.8,fontWeight:700,fontFamily:'Outfit,sans-serif'}}>{h}</div>)}</div>
+        {[...ft].reverse().map(t=><div key={t.id} style={{display:'grid',gridTemplateColumns:'90px 80px 75px 56px 60px 64px 70px 1fr 28px',gap:6,padding:'11px 16px',borderBottom:'1px solid rgba(255,255,255,0.04)',alignItems:'center'}}>
+          <div style={{color:TH.tx,fontSize:11}}>{t.date}</div>
+          <div style={{color:TH.sb,fontSize:11}}>{t.time}</div>
+          <div style={{color:TH.tx,fontWeight:900,fontSize:13,fontFamily:'Outfit,sans-serif'}}>{t.symbol}</div>
+          <div style={{color:t.direction==='long'?TH.gn:TH.rd,fontSize:9.5,fontWeight:700,letterSpacing:1}}>{t.direction.toUpperCase()}</div>
+          <div style={{color:TH.sb,fontSize:11}}>{t.session}</div>
+          <div style={{color:rc(t.rValue),fontWeight:900,fontSize:14,fontFamily:'Outfit,sans-serif'}}>{rf(t.rValue)}</div>
+          <div style={{color:t.result==='win'?TH.gn:t.result==='loss'?TH.rd:TH.sb,fontSize:8,fontWeight:800,letterSpacing:1,fontFamily:'Outfit,sans-serif'}}>{t.result.toUpperCase()}</div>
+          <div style={{color:TH.sb,fontSize:10,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{[t.setup,t.notes].filter(Boolean).join(' · ')||'–'}</div>
+          <button onClick={()=>delT(t.id)} style={{background:'none',border:'none',cursor:'pointer',color:TH.sb,fontSize:14,padding:0,opacity:0.4}}>×</button>
         </div>)}
       </div>}
     </div>}
 
-    {/* ADD TRADE */}
-    {tpg==="add"&&<div>
-      <SH title="Log Trades" sub="Paste directly from Google Sheets or enter one manually."/>
-      {/* Mode toggle */}
-      <div style={{display:"flex",gap:4,marginBottom:18,background:C.cd,border:"1px solid "+C.bd,borderRadius:12,padding:4}}>
-        {[{k:"paste",l:"📋 Paste from Sheets",sub:"Paste multiple rows at once"},{k:"single",l:"✏️ Single Trade",sub:"Manual entry form"}].map(m=><button key={m.k} onClick={()=>{sAddMode(m.k);sPasteText("");}} style={{flex:1,padding:"10px 12px",borderRadius:9,border:"none",background:addMode===m.k?"linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.08))":  "transparent",cursor:"pointer",textAlign:"left"}}><div style={{color:addMode===m.k?"#10b981":C.tx,fontSize:12.5,fontWeight:700,fontFamily:"Plus Jakarta Sans,sans-serif"}}>{m.l}</div><div style={{color:C.sb,fontSize:10.5,marginTop:2}}>{m.sub}</div></button>)}
+    {/* LOG TRADE */}
+    {tpg==='add'&&<div>
+      <div style={{marginBottom:20}}><div style={{color:TH.sb,fontSize:8,letterSpacing:2,fontWeight:700,marginBottom:6,fontFamily:'Outfit,sans-serif'}}>LOGGING TO STRATEGY</div><div style={{display:'flex',gap:6}}>{Object.entries(STRATS).map(([sk,sv])=><button key={sk} onClick={()=>sStrat(sk)} style={{padding:'8px 18px',borderRadius:6,border:strat===sk?'1px solid '+sv.c:'1px solid rgba(255,255,255,0.08)',background:strat===sk?sv.g:'transparent',color:strat===sk?sv.c:TH.sb,fontSize:11,fontWeight:900,cursor:'pointer',letterSpacing:1.5,fontFamily:'Outfit,sans-serif',transition:'all 0.12s'}}>{sk}</button>)}</div></div>
+      <div style={{display:'flex',gap:4,marginBottom:18,background:TH.card,border:'1px solid rgba(255,255,255,0.07)',borderRadius:8,padding:4}}>
+        {[{k:'paste',l:'📋 Paste from Sheets'},{k:'single',l:'✏️ Single Trade'}].map(m=><button key={m.k} onClick={()=>{sAddMode(m.k);sPasteText('');}} style={{flex:1,padding:'10px 12px',borderRadius:6,border:'none',background:addMode===m.k?sc.g:'transparent',cursor:'pointer',textAlign:'left',transition:'all 0.12s'}}><div style={{color:addMode===m.k?sc.c:TH.tx,fontSize:12.5,fontWeight:700}}>{m.l}</div></button>)}
       </div>
 
-      {/* PASTE MODE */}
-      {addMode==="paste"&&(()=>{
+      {addMode==='paste'&&(()=>{
         const preview=parsePaste(pasteText);
         const valid=preview.filter(r=>r.valid);
         const invalid=preview.filter(r=>!r.valid);
-        const confirmAll=()=>{if(!valid.length)return;sd({...d,trades:[...(d.trades||[]),...valid.map(({valid:_,errs:__,...t})=>({...t,strategy:strat}))]});sPasteText("");sTpg("log");};
+        const confirmAll=()=>{if(!valid.length)return;sd({...d,trades:[...(d.trades||[]),...valid.map(({valid:_,errs:__,...t})=>({...t,strategy:strat}))]});sPasteText('');sTpg('log');};
         return <div>
-          <Cd style={{padding:20,marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div><div style={{color:C.tx,fontSize:13,fontWeight:700}}>Paste your Google Sheets data below</div><div style={{color:C.sb,fontSize:11,marginTop:2}}>Select your rows in Sheets (Ctrl+C / Cmd+C) then paste here. Headers optional.</div></div>
-              {pasteText&&<div style={{display:"flex",gap:8,alignItems:"center"}}>{valid.length>0&&<span style={{color:C.gn,fontSize:11,fontWeight:700,background:C.gg,padding:"3px 10px",borderRadius:6}}>{valid.length} valid</span>}{invalid.length>0&&<span style={{color:C.rd,fontSize:11,fontWeight:700,background:C.rg,padding:"3px 10px",borderRadius:6}}>{invalid.length} errors</span>}</div>}
+          <div style={{background:TH.card,border:'1px solid rgba(255,255,255,0.07)',borderRadius:8,padding:20,marginBottom:14}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <div><div style={{color:TH.tx,fontSize:13,fontWeight:700}}>Paste from Google Sheets</div><div style={{color:TH.sb,fontSize:11,marginTop:2}}>Select rows → Cmd+C → paste below. Positive R = win, negative R = loss (SL hit).</div></div>
+              {pasteText&&<div style={{display:'flex',gap:8}}>{valid.length>0&&<span style={{color:TH.gn,fontSize:11,fontWeight:700,background:'rgba(22,199,132,0.1)',padding:'3px 10px',borderRadius:4,border:'1px solid rgba(22,199,132,0.2)'}}>{valid.length} valid</span>}{invalid.length>0&&<span style={{color:TH.rd,fontSize:11,fontWeight:700,background:'rgba(234,57,67,0.08)',padding:'3px 10px',borderRadius:4}}>{invalid.length} errors</span>}</div>}
             </div>
-            <textarea value={pasteText} onChange={e=>sPasteText(e.target.value)} placeholder={"Paste rows here — e.g. from Google Sheets:\n\n2024-01-15\t09:30\tEURUSD\tlong\tLDN\t1.5\tBOS\tGood setup\n2024-01-16\t14:00\tNQ\tshort\tNY\t-1.0\tMSS\tEarly entry\n\nColumn headers are auto-detected if present."} rows={8} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"12px 14px",color:C.tx,fontSize:12,width:"100%",boxSizing:"border-box",resize:"vertical",outline:"none",fontFamily:"monospace",lineHeight:1.7}}/>
-          </Cd>
-
-          {/* Tips */}
-          {!pasteText&&<Cd style={{padding:16,marginBottom:16,borderColor:"rgba(16,185,129,0.2)",background:"rgba(16,185,129,0.04)"}}>
-            <div style={{color:"#10b981",fontSize:9.5,letterSpacing:1.5,fontWeight:700,marginBottom:10}}>HOW IT WORKS</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[{n:"1. Open Google Sheets",d:"Your trading journal with all your trades"},{n:"2. Select your data",d:"Highlight all rows (with or without headers)"},{n:"3. Copy (Cmd+C)",d:"Then click the text box above and paste"},{n:"4. Review & confirm",d:"Preview all detected trades, then import"}].map(s=><div key={s.n} style={{display:"flex",gap:8}}><div style={{width:20,height:20,borderRadius:6,background:"rgba(16,185,129,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><div style={{width:6,height:6,borderRadius:"50%",background:"#10b981"}}/></div><div><div style={{color:C.tx,fontSize:11.5,fontWeight:600}}>{s.n}</div><div style={{color:C.sb,fontSize:10.5,marginTop:1}}>{s.d}</div></div></div>)}
-            </div>
-            <div style={{marginTop:14,padding:"10px 14px",background:C.cd,borderRadius:8,border:"1px solid "+C.bd}}>
-              <div style={{color:C.sb,fontSize:9,letterSpacing:1.5,fontWeight:700,marginBottom:6}}>SUPPORTED COLUMN ORDER (auto-detected)</div>
-              <div style={{color:C.sb,fontSize:11,fontFamily:"monospace"}}>Date · Time · Symbol · Direction · Session · R · Setup · Notes</div>
-              <div style={{color:C.mt,fontSize:10,marginTop:4}}>Column headers are matched automatically — "Pair", "Instrument", "P&L" etc. all work.</div>
-            </div>
-          </Cd>}
-
-          {/* Preview */}
+            <textarea value={pasteText} onChange={e=>sPasteText(e.target.value)} placeholder={"Paste here:\n2024-01-15\t09:30\tEURUSD\tlong\tLDN\t3R\tBOS\n2024-01-16\t14:00\tNQ\tshort\tNY\t-1R\tMSS\n\nPositive R (3R, +1.5R) = WIN\nNegative R (-1R, -0.5R) = LOSS (SL hit)"} rows={7} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:6,padding:'12px 14px',color:TH.tx,fontSize:12,width:'100%',boxSizing:'border-box',resize:'vertical',outline:'none',fontFamily:'monospace',lineHeight:1.7}}/>
+          </div>
+          {!pasteText&&<div style={{background:TH.card,border:'1px solid rgba(255,255,255,0.07)',borderRadius:8,padding:16,marginBottom:14}}><div style={{color:TH.sb,fontSize:8,letterSpacing:2,fontWeight:700,marginBottom:8,fontFamily:'Outfit,sans-serif'}}>R VALUE GUIDE</div><div style={{display:'flex',gap:20}}><div style={{color:TH.gn,fontSize:12,fontWeight:700,fontFamily:'Outfit,sans-serif'}}>3R or +3R = WIN 3 risk:reward</div><div style={{color:TH.rd,fontSize:12,fontWeight:700,fontFamily:'Outfit,sans-serif'}}>-1R = LOSS (SL hit = -1R)</div></div><div style={{color:TH.sb,fontSize:10,marginTop:6,fontFamily:'monospace'}}>Columns (auto-detected): Date · Time · Symbol · Direction · Session · R · Setup · Notes</div></div>}
           {preview.length>0&&<div style={{marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{color:C.sb,fontSize:9,letterSpacing:2,fontWeight:700}}>PREVIEW — {preview.length} ROW{preview.length!==1?"S":""} DETECTED</div>
-              <Bt onClick={()=>sPasteText("")} v="secondary" style={{padding:"5px 12px",fontSize:10}}>Clear</Bt>
-            </div>
-            <div style={{maxHeight:340,overflowY:"auto",borderRadius:10,border:"1px solid "+C.bd}}>
-              <div style={{display:"grid",gridTemplateColumns:"90px 80px 70px 70px 55px 55px 80px 1fr 80px",gap:6,padding:"7px 14px",background:"rgba(255,255,255,0.02)",borderBottom:"1px solid "+C.bd}}>
-                {["DATE","TIME","SYMBOL","DIRECTION","SESSION","R","RESULT","SETUP / NOTES","STATUS"].map(h=><div key={h} style={{color:C.sb,fontSize:8,letterSpacing:1.2,fontWeight:700}}>{h}</div>)}
-              </div>
-              {preview.map((r,i)=><div key={i} style={{display:"grid",gridTemplateColumns:"90px 80px 70px 70px 55px 55px 80px 1fr 80px",gap:6,padding:"9px 14px",borderBottom:"1px solid "+C.bd,background:r.valid?"transparent":"rgba(239,68,68,0.05)",alignItems:"center"}}>
-                <div style={{color:r.valid?C.tx:C.rd,fontSize:11,fontWeight:r.valid?500:700}}>{r.date||"—"}</div>
-                <div style={{color:C.sb,fontSize:11}}>{r.time}</div>
-                <div style={{color:C.tx,fontWeight:800,fontSize:12,fontFamily:"Outfit,sans-serif"}}>{r.symbol||"—"}</div>
-                <div style={{color:r.direction==="long"?C.gn:C.rd,fontSize:11,fontWeight:600,textTransform:"uppercase"}}>{r.direction}</div>
-                <div style={{color:C.sb,fontSize:11}}>{r.session}</div>
-                <div style={{color:r.rValue>0?C.gn:r.rValue<0?C.rd:C.sb,fontWeight:700,fontSize:12,fontFamily:"Outfit,sans-serif"}}>{isNaN(r.rValue)?"?":((r.rValue>=0?"+":"")+r.rValue.toFixed(1)+"R")}</div>
-                <div style={{color:r.result==="win"?C.gn:r.result==="loss"?C.rd:C.sb,fontSize:9,fontWeight:700,letterSpacing:1}}>{r.result.toUpperCase()}</div>
-                <div style={{color:C.sb,fontSize:10,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{[r.setup,r.notes].filter(Boolean).join(" · ")||"–"}</div>
-                <div>{r.valid?<span style={{color:C.gn,fontSize:9,fontWeight:700,background:C.gg,padding:"2px 7px",borderRadius:4}}>✓ VALID</span>:<span style={{color:C.rd,fontSize:9,fontWeight:700}}>{r.errs.join(", ")}</span>}</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}><div style={{color:TH.sb,fontSize:8,letterSpacing:2,fontWeight:700,fontFamily:'Outfit,sans-serif'}}>{preview.length} ROWS DETECTED</div><button onClick={()=>sPasteText('')} style={{background:'transparent',border:'1px solid rgba(255,255,255,0.08)',borderRadius:5,padding:'4px 10px',color:TH.sb,cursor:'pointer',fontSize:10}}>Clear</button></div>
+            <div style={{maxHeight:320,overflowY:'auto',border:'1px solid rgba(255,255,255,0.07)',borderRadius:8}}>
+              <div style={{display:'grid',gridTemplateColumns:'90px 70px 70px 60px 55px 64px 70px 1fr 80px',gap:6,padding:'7px 14px',background:'rgba(255,255,255,0.02)',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>{['DATE','TIME','SYMBOL','DIR','SESSION','R','RESULT','SETUP','STATUS'].map(h=><div key={h} style={{color:TH.sb,fontSize:7.5,letterSpacing:1.5,fontWeight:700,fontFamily:'Outfit,sans-serif'}}>{h}</div>)}</div>
+              {preview.map((r,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'90px 70px 70px 60px 55px 64px 70px 1fr 80px',gap:6,padding:'9px 14px',borderBottom:'1px solid rgba(255,255,255,0.04)',background:r.valid?'transparent':'rgba(234,57,67,0.04)',alignItems:'center'}}>
+                <div style={{color:r.valid?TH.tx:TH.rd,fontSize:11}}>{r.date||'—'}</div>
+                <div style={{color:TH.sb,fontSize:11}}>{r.time}</div>
+                <div style={{color:TH.tx,fontWeight:800,fontSize:12,fontFamily:'Outfit,sans-serif'}}>{r.symbol||'—'}</div>
+                <div style={{color:r.direction==='long'?TH.gn:TH.rd,fontSize:9.5,fontWeight:700,letterSpacing:1}}>{r.direction.toUpperCase()}</div>
+                <div style={{color:TH.sb,fontSize:10}}>{r.session}</div>
+                <div style={{color:rc(r.rValue),fontWeight:900,fontSize:13,fontFamily:'Outfit,sans-serif'}}>{isNaN(r.rValue)?'?':rf(r.rValue)}</div>
+                <div style={{color:r.result==='win'?TH.gn:r.result==='loss'?TH.rd:TH.sb,fontSize:8,fontWeight:800,letterSpacing:1,fontFamily:'Outfit,sans-serif'}}>{r.result.toUpperCase()}</div>
+                <div style={{color:TH.sb,fontSize:10,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{r.setup||'–'}</div>
+                <div>{r.valid?<span style={{color:TH.gn,fontSize:8,fontWeight:800,background:'rgba(22,199,132,0.1)',padding:'2px 7px',borderRadius:3,letterSpacing:1}}>✓ VALID</span>:<span style={{color:TH.rd,fontSize:8,fontWeight:700}}>{r.errs.join(', ')}</span>}</div>
               </div>)}
             </div>
-            {invalid.length>0&&<div style={{color:C.sb,fontSize:11,marginTop:8,padding:"8px 12px",background:C.rg,borderRadius:8,border:"1px solid rgba(239,68,68,0.15)"}}>⚠ {invalid.length} row{invalid.length!==1?"s":""} with errors will be skipped. Fix in your sheet and re-paste.</div>}
-            <div style={{display:"flex",gap:10,marginTop:14}}>
-              {valid.length>0&&<Bt onClick={confirmAll} style={{flex:1,justifyContent:"center",padding:"13px",fontSize:13}}>✓ Import {valid.length} Trade{valid.length!==1?"s":""}</Bt>}
-              <Bt v="secondary" onClick={()=>sTpg("log")} style={{padding:"13px 20px"}}>Cancel</Bt>
+            {invalid.length>0&&<div style={{color:TH.rd,fontSize:11,marginTop:8,padding:'7px 12px',background:'rgba(234,57,67,0.06)',borderRadius:6}}>{invalid.length} row{invalid.length!==1?'s':''} with errors will be skipped</div>}
+            <div style={{display:'flex',gap:10,marginTop:14}}>
+              {valid.length>0&&<button onClick={confirmAll} style={{flex:1,padding:'13px',background:TH.gn,border:'none',borderRadius:6,color:'#000',cursor:'pointer',fontSize:13,fontWeight:900,letterSpacing:0.5,fontFamily:'Outfit,sans-serif'}}>✓ IMPORT {valid.length} TRADE{valid.length!==1?'S':''} → {strat}</button>}
+              <button onClick={()=>sTpg('log')} style={{padding:'13px 20px',background:TH.card,border:'1px solid rgba(255,255,255,0.08)',borderRadius:6,color:TH.sb,cursor:'pointer',fontSize:12,fontWeight:600}}>Cancel</button>
             </div>
           </div>}
         </div>;
       })()}
 
-      {/* SINGLE TRADE MODE */}
-      {addMode==="single"&&<Cd style={{padding:24,maxWidth:520}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>DATE</label><Inp value={af.date} onChange={e=>sAf({...af,date:e.target.value})} type="date" style={{width:"100%"}}/></div>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>TIME</label><Inp value={af.time} onChange={e=>sAf({...af,time:e.target.value})} type="time" style={{width:"100%"}}/></div>
+      {addMode==='single'&&<div style={{background:TH.card,border:'1px solid rgba(255,255,255,0.07)',borderRadius:8,padding:24,maxWidth:520}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+          <div><label style={{color:TH.sb,fontSize:8,letterSpacing:1.5,fontWeight:700,display:'block',marginBottom:5,fontFamily:'Outfit,sans-serif'}}>DATE</label><input value={af.date} onChange={e=>sAf({...af,date:e.target.value})} type='date' style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'10px 14px',color:TH.tx,fontSize:13,outline:'none',width:'100%',boxSizing:'border-box',fontFamily:'Plus Jakarta Sans,sans-serif'}}/></div>
+          <div><label style={{color:TH.sb,fontSize:8,letterSpacing:1.5,fontWeight:700,display:'block',marginBottom:5,fontFamily:'Outfit,sans-serif'}}>TIME</label><input value={af.time} onChange={e=>sAf({...af,time:e.target.value})} type='time' style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'10px 14px',color:TH.tx,fontSize:13,outline:'none',width:'100%',boxSizing:'border-box',fontFamily:'Plus Jakarta Sans,sans-serif'}}/></div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SYMBOL</label><Inp value={af.symbol} onChange={e=>sAf({...af,symbol:e.target.value})} placeholder="EURUSD, NQ, GBPUSD..." style={{width:"100%"}}/></div>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>R VALUE</label><Inp value={af.rValue} onChange={e=>sAf({...af,rValue:e.target.value})} placeholder="+1.5 or -1.0" type="number" step="0.1" style={{width:"100%"}}/></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+          <div><label style={{color:TH.sb,fontSize:8,letterSpacing:1.5,fontWeight:700,display:'block',marginBottom:5,fontFamily:'Outfit,sans-serif'}}>SYMBOL</label><input value={af.symbol} onChange={e=>sAf({...af,symbol:e.target.value})} placeholder='EURUSD, NQ...' style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'10px 14px',color:TH.tx,fontSize:13,outline:'none',width:'100%',boxSizing:'border-box',fontFamily:'Plus Jakarta Sans,sans-serif'}}/></div>
+          <div><label style={{color:TH.sb,fontSize:8,letterSpacing:1.5,fontWeight:700,display:'block',marginBottom:5,fontFamily:'Outfit,sans-serif'}}>R VALUE <span style={{color:TH.sb,fontSize:7,letterSpacing:0}}>3R = win · -1R = SL hit</span></label><input value={af.rValue} onChange={e=>sAf({...af,rValue:e.target.value})} placeholder='3R or -1R' style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'10px 14px',color:TH.tx,fontSize:13,outline:'none',width:'100%',boxSizing:'border-box',fontFamily:'Plus Jakarta Sans,sans-serif'}}/></div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>DIRECTION</label><select value={af.direction} onChange={e=>sAf({...af,direction:e.target.value})} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}><option value="long">Long</option><option value="short">Short</option></select></div>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SESSION</label><select value={af.session} onChange={e=>sAf({...af,session:e.target.value})} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}>{ss.map(s=><option key={s}>{s}</option>)}</select></div>
-          <div><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>SETUP</label><Inp value={af.setup} onChange={e=>sAf({...af,setup:e.target.value})} placeholder="BOS, MSS..." style={{width:"100%"}}/></div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}}>
+          <div><label style={{color:TH.sb,fontSize:8,letterSpacing:1.5,fontWeight:700,display:'block',marginBottom:5,fontFamily:'Outfit,sans-serif'}}>DIRECTION</label><select value={af.direction} onChange={e=>sAf({...af,direction:e.target.value})} style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'10px 14px',color:TH.tx,fontSize:13,width:'100%',outline:'none',fontFamily:'Plus Jakarta Sans,sans-serif'}}><option value='long'>Long</option><option value='short'>Short</option></select></div>
+          <div><label style={{color:TH.sb,fontSize:8,letterSpacing:1.5,fontWeight:700,display:'block',marginBottom:5,fontFamily:'Outfit,sans-serif'}}>SESSION</label><select value={af.session} onChange={e=>sAf({...af,session:e.target.value})} style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'10px 14px',color:TH.tx,fontSize:13,width:'100%',outline:'none',fontFamily:'Plus Jakarta Sans,sans-serif'}}>{ss.map(s=><option key={s}>{s}</option>)}</select></div>
+          <div><label style={{color:TH.sb,fontSize:8,letterSpacing:1.5,fontWeight:700,display:'block',marginBottom:5,fontFamily:'Outfit,sans-serif'}}>SETUP</label><input value={af.setup} onChange={e=>sAf({...af,setup:e.target.value})} placeholder='BOS, MSS...' style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'10px 14px',color:TH.tx,fontSize:13,outline:'none',width:'100%',boxSizing:'border-box',fontFamily:'Plus Jakarta Sans,sans-serif'}}/></div>
         </div>
-        <div style={{marginBottom:18}}><label style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:700,display:"block",marginBottom:5}}>NOTES</label><textarea value={af.notes} onChange={e=>sAf({...af,notes:e.target.value})} placeholder="Execution notes..." rows={3} style={{background:C.sf,border:"1px solid "+C.bd,borderRadius:10,padding:"10px 14px",color:C.tx,fontSize:13,width:"100%",boxSizing:"border-box",resize:"vertical",outline:"none",fontFamily:"Plus Jakarta Sans,sans-serif"}}/></div>
-        <div style={{display:"flex",gap:10}}>
-          <Bt onClick={addT} style={{flex:1,justifyContent:"center",padding:"12px",fontSize:13}}>✓ Save Trade</Bt>
-          <Bt v="secondary" onClick={()=>sTpg("log")} style={{padding:"12px 18px"}}>Cancel</Bt>
+        <div style={{marginBottom:18}}><label style={{color:TH.sb,fontSize:8,letterSpacing:1.5,fontWeight:700,display:'block',marginBottom:5,fontFamily:'Outfit,sans-serif'}}>NOTES</label><textarea value={af.notes} onChange={e=>sAf({...af,notes:e.target.value})} placeholder='Execution notes, emotions...' rows={3} style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:6,padding:'10px 14px',color:TH.tx,fontSize:13,width:'100%',boxSizing:'border-box',resize:'vertical',outline:'none',fontFamily:'Plus Jakarta Sans,sans-serif'}}/></div>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={addT} style={{flex:1,padding:'12px',background:TH.gn,border:'none',borderRadius:6,color:'#000',cursor:'pointer',fontSize:13,fontWeight:900,letterSpacing:0.5,fontFamily:'Outfit,sans-serif'}}>✓ SAVE → {strat}</button>
+          <button onClick={()=>sTpg('log')} style={{padding:'12px 18px',background:TH.card,border:'1px solid rgba(255,255,255,0.08)',borderRadius:6,color:TH.sb,cursor:'pointer',fontSize:12,fontWeight:600}}>Cancel</button>
         </div>
-      </Cd>}
+      </div>}
     </div>}
 
     </div>
     </div>
   </div>;
 }
+
 
 // MAIN APP
 export default function App(){
