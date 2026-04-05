@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, AreaChart, Area, LineChart, Line } from "recharts";
 import { supabase } from "./supabase";
 
@@ -19,7 +19,7 @@ const tq=()=>QS[doy()%QS.length];
 const gr=x=>{let r=RK[0];for(const k of RK){if(x>=k.x)r=k;else break;}return r;};
 const nrk=x=>{for(const k of RK){if(x<k.x)return k;}return null;};
 
-const DD=()=>({xp:0,habits:[{id:"h1",name:"Morning Routine",active:true},{id:"h2",name:"Exercise",active:true},{id:"h3",name:"Read 30 mins",active:true},{id:"h4",name:"No Social Media before 12pm",active:true},{id:"h5",name:"Gratitude Practice",active:true}],habitLog:{},goals:{daily:[],weekly:[],monthly:[],yearly:[]},goalArchive:[],journal:[],workouts:[],transactions:[],books:[],sleepLog:{},meals:[],macroTargets:{calories:2500,protein:150,carbs:300,fat:80},weightLog:[],weightTarget:{weight:null,date:null},routine:[{id:"r1",time:"06:00",name:"Wake Up & Hydrate"},{id:"r2",time:"06:30",name:"Gym / Training"},{id:"r3",time:"08:00",name:"Shower & Prep"},{id:"r4",time:"08:30",name:"Deep Work Block 1"},{id:"r5",time:"12:00",name:"Lunch"},{id:"r6",time:"13:00",name:"Deep Work Block 2"},{id:"r7",time:"17:00",name:"Review & Plan Tomorrow"},{id:"r8",time:"21:00",name:"Wind Down & Read"},{id:"r9",time:"22:00",name:"Lights Out"}],routineSat:[],routineSun:[],routineLog:{},streak:0,bestStreak:0,lastDate:td(),lastWeek:wkk(),lastMonth:mkk(),lastYear:ykk()});
+const DD=()=>({xp:0,habits:[{id:"h1",name:"Morning Routine",active:true},{id:"h2",name:"Exercise",active:true},{id:"h3",name:"Read 30 mins",active:true},{id:"h4",name:"No Social Media before 12pm",active:true},{id:"h5",name:"Gratitude Practice",active:true}],habitLog:{},goals:{daily:[],weekly:[],monthly:[],yearly:[]},goalArchive:[],journal:[],workouts:[],transactions:[],books:[],sleepLog:{},meals:[],macroTargets:{calories:2500,protein:150,carbs:300,fat:80},weightLog:[],weightTarget:{weight:null,date:null},recentScans:[],routine:[{id:"r1",time:"06:00",name:"Wake Up & Hydrate"},{id:"r2",time:"06:30",name:"Gym / Training"},{id:"r3",time:"08:00",name:"Shower & Prep"},{id:"r4",time:"08:30",name:"Deep Work Block 1"},{id:"r5",time:"12:00",name:"Lunch"},{id:"r6",time:"13:00",name:"Deep Work Block 2"},{id:"r7",time:"17:00",name:"Review & Plan Tomorrow"},{id:"r8",time:"21:00",name:"Wind Down & Read"},{id:"r9",time:"22:00",name:"Lights Out"}],routineSat:[],routineSun:[],routineLog:{},streak:0,bestStreak:0,lastDate:td(),lastWeek:wkk(),lastMonth:mkk(),lastYear:ykk()});
 
 async function loadUD(uid){try{const{data}=await supabase.from('user_data').select('data').eq('id',uid).single();return data&&data.data?{...DD(),...data.data}:DD();}catch{return DD();}}
 async function saveUD(uid,d){try{await supabase.from('user_data').upsert({id:uid,data:d,updated_at:new Date().toISOString()});}catch(e){console.error(e);}}
@@ -92,7 +92,295 @@ function Journal({data:d,setData:sd,sxp}){const[type,sType]=useState("morning"),
   <div><div style={{display:"flex",gap:3,marginBottom:8,flexWrap:"wrap"}}><button onClick={()=>sFi("all")} style={{padding:"3px 8px",borderRadius:5,border:filt==="all"?"1px solid "+C.ac:"1px solid "+C.bd,background:filt==="all"?C.ag:C.sf,color:filt==="all"?C.ac:C.sb,fontSize:10,fontWeight:600,cursor:"pointer"}}>All</button>{JTAGS.map(t=><button key={t} onClick={()=>sFi(t)} style={{padding:"3px 7px",borderRadius:5,border:filt===t?"1px solid "+C.ac:"1px solid "+C.bd,background:filt===t?C.ag:C.sf,color:filt===t?C.ac:C.sb,fontSize:10,fontWeight:600,cursor:"pointer"}}>{t}</button>)}</div><div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:500,overflowY:"auto"}}>{filtered.map(j=><Cd key={j.id} onClick={()=>sS(j.id===sel?null:j.id)} style={{padding:"11px 14px",cursor:"pointer",borderColor:sel===j.id?C.ac:C.bd,background:sel===j.id?C.ag:C.cd}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><div style={{display:"flex",gap:5}}><span style={{color:j.type==="morning"?C.ac:C.cy,fontSize:10.5,fontWeight:700}}>{j.type==="morning"?"☀":"☽"}</span><span style={{background:C.sf,color:C.sb,padding:"1px 5px",borderRadius:4,fontSize:9.5}}>{j.tag}</span></div><span style={{color:C.sb,fontSize:10.5}}>{j.date}</span></div><div style={{display:"flex",gap:6}}><span style={{color:C.ac,fontSize:10}}>M:{j.mindset}/10</span><span style={{color:C.cy,fontSize:10}}>E:{j.energy}/10</span></div>{sel===j.id&&<div style={{marginTop:8,borderTop:"1px solid "+C.bd,paddingTop:8}}>{j.wins&&<div style={{marginBottom:6}}><div style={{color:C.ac,fontSize:9.5,fontWeight:700}}>WINS</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.wins}</div></div>}{j.lessons&&<div style={{marginBottom:6}}><div style={{color:C.cy,fontSize:9.5,fontWeight:700}}>LESSONS</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.lessons}</div></div>}{j.gratitude&&<div style={{marginBottom:6}}><div style={{color:C.gn,fontSize:9.5,fontWeight:700}}>GRATITUDE</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.gratitude}</div></div>}{j.focus&&<div style={{marginBottom:6}}><div style={{color:C.pp,fontSize:9.5,fontWeight:700}}>FOCUS</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.focus}</div></div>}{j.freeform&&<div style={{marginBottom:6}}><div style={{color:C.sb,fontSize:9.5,fontWeight:700}}>THOUGHTS</div><div style={{color:C.tx,fontSize:12,lineHeight:1.5}}>{j.freeform}</div></div>}<button onClick={e=>{e.stopPropagation();del(j.id);}} style={{background:C.rg,border:"none",borderRadius:6,padding:"4px 10px",color:C.rd,cursor:"pointer",fontSize:10.5,fontWeight:600}}>Delete</button></div>}</Cd>)}</div></div></div></div>;}
 
 // NUTRITION
-function Nutrition({data:d,setData:sd,sxp}){const[meal,sML]=useState(""),[mt,sMT]=useState("Breakfast"),[cal,sCal]=useState(""),[pro,sPro]=useState(""),[carb,sCb]=useState(""),[fat,sFat]=useState("");const tgt=d.macroTargets||{calories:2500,protein:150,carbs:300,fat:80};const tm=(d.meals||[]).filter(m=>m.date===td()),tC=tm.reduce((a,m)=>a+m.calories,0),tP=tm.reduce((a,m)=>a+m.protein,0),tCb2=tm.reduce((a,m)=>a+m.carbs,0),tF=tm.reduce((a,m)=>a+m.fat,0);const add=()=>{if(!meal.trim())return;sd({...d,meals:[{id:"m"+Date.now(),name:meal.trim(),type:mt,calories:parseFloat(cal)||0,protein:parseFloat(pro)||0,carbs:parseFloat(carb)||0,fat:parseFloat(fat)||0,date:td()},...(d.meals||[])],xp:d.xp+XP.n});sML("");sCal("");sPro("");sCb("");sFat("");sxp(XP.n);};return <div><SH title="Nutrition" sub="Track meals & macros."/><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:18}}>{[["CALS",tC,tgt.calories,C.or,"kcal"],["PROTEIN",tP,tgt.protein,C.gn,"g"],["CARBS",tCb2,tgt.carbs,C.cy,"g"],["FAT",tF,tgt.fat,C.pp,"g"]].map(([l,v,mx,c])=><Cd key={l} style={{padding:14}}><div style={{color:C.sb,fontSize:9.5,letterSpacing:1,fontWeight:600,marginBottom:3}}>{l}</div><div style={{color:c,fontSize:20,fontWeight:800,fontFamily:"Outfit,sans-serif"}}>{v}<span style={{fontSize:11,color:C.sb}}>/{mx}</span></div><PB val={v} max={mx} col={c}/></Cd>)}</div><Cd style={{marginBottom:16}}><div style={{display:"flex",gap:6,marginBottom:10}}>{["Breakfast","Lunch","Dinner","Snack"].map(t=><button key={t} onClick={()=>sMT(t)} style={{padding:"6px 10px",borderRadius:7,border:mt===t?"1px solid "+C.ac:"1px solid "+C.bd,background:mt===t?C.ag:C.sf,color:mt===t?C.ac:C.sb,fontSize:11,fontWeight:600,cursor:"pointer"}}>{t}</button>)}</div><div style={{display:"flex",gap:8,marginBottom:8}}><Inp value={meal} onChange={e=>sML(e.target.value)} placeholder="Food" style={{flex:2}}/><Inp value={cal} onChange={e=>sCal(e.target.value)} placeholder="Kcal" type="number" style={{flex:1}}/></div><div style={{display:"flex",gap:8}}><Inp value={pro} onChange={e=>sPro(e.target.value)} placeholder="P(g)" type="number" style={{flex:1}}/><Inp value={carb} onChange={e=>sCb(e.target.value)} placeholder="C(g)" type="number" style={{flex:1}}/><Inp value={fat} onChange={e=>sFat(e.target.value)} placeholder="F(g)" type="number" style={{flex:1}}/><Bt onClick={add}>+</Bt></div></Cd>{tm.map(m=><Cd key={m.id} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",marginBottom:5}}><div><span style={{color:C.tx,fontSize:13,fontWeight:600}}>{m.name}</span><span style={{color:C.sb,fontSize:11}}> · {m.type} · {m.calories}kcal</span></div><button onClick={()=>sd({...d,meals:d.meals.filter(x=>x.id!==m.id)})} style={{background:"none",border:"none",cursor:"pointer",color:C.mt,fontSize:14}}>×</button></Cd>)}</div>;}
+function Nutrition({data:d,setData:sd,sxp}){
+  const[mt,sMT]=useState("Breakfast");
+  const[meal,sML]=useState(""),[cal,sCal]=useState(""),[pro,sPro]=useState(""),[carb,sCb]=useState(""),[fat,sFat]=useState("");
+  const[mode,sMode]=useState("log");
+  const[scanning,setScanning]=useState(false),[scanErr,sScanErr]=useState(""),[manualBC,sManualBC]=useState("");
+  const[searchQ,sSearchQ]=useState(""),[searchRes,sSearchRes]=useState([]),[searching,setSearching]=useState(false);
+  const[product,sProduct]=useState(null),[servingG,sServingG]=useState("100");
+  const videoRef=useRef(null),streamRef=useRef(null),detectorRef=useRef(null),loopRef=useRef(null);
+
+  const tgt=d.macroTargets||{calories:2500,protein:150,carbs:300,fat:80};
+  const tm=(d.meals||[]).filter(m=>m.date===td());
+  const tC=tm.reduce((a,m)=>a+(m.calories||0),0),tP=tm.reduce((a,m)=>a+(m.protein||0),0),tCb=tm.reduce((a,m)=>a+(m.carbs||0),0),tF=tm.reduce((a,m)=>a+(m.fat||0),0);
+
+  const stopCamera=()=>{if(loopRef.current)cancelAnimationFrame(loopRef.current);if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}};
+  useEffect(()=>()=>stopCamera(),[]);
+
+  const startScan=async()=>{
+    sScanErr("");sMode("scan");
+    if(!("BarcodeDetector" in window))return;
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280}}});
+      streamRef.current=stream;
+      detectorRef.current=new window.BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf"]});
+      setScanning(true);
+    }catch{sScanErr("Camera access denied. Enter barcode manually below.");}
+  };
+
+  useEffect(()=>{
+    if(mode==="scan"&&scanning&&videoRef.current&&streamRef.current){
+      const vid=videoRef.current;
+      vid.srcObject=streamRef.current;
+      vid.play().then(()=>{
+        const loop=async()=>{
+          if(!detectorRef.current||!vid||vid.readyState<2){loopRef.current=requestAnimationFrame(loop);return;}
+          try{
+            const codes=await detectorRef.current.detect(vid);
+            if(codes.length){stopCamera();setScanning(false);lookupBarcode(codes[0].rawValue);}
+            else loopRef.current=requestAnimationFrame(loop);
+          }catch{loopRef.current=requestAnimationFrame(loop);}
+        };
+        loopRef.current=requestAnimationFrame(loop);
+      }).catch(()=>sScanErr("Could not start camera preview."));
+    }
+  },[mode,scanning]);
+
+  const lookupBarcode=async bc=>{
+    sMode("loading");sScanErr("");
+    try{
+      const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${bc}.json?fields=product_name,brands,stores,image_url,nutriments,serving_size,serving_quantity`);
+      const data=await r.json();
+      if(data.status===1&&data.product){
+        const p=data.product,n=p.nutriments||{};
+        const pd={barcode:bc,name:p.product_name||"Unknown Product",brand:p.brands||"",stores:p.stores||"",image:p.image_url||"",servingSize:p.serving_size||"100g",servingGrams:parseFloat(p.serving_quantity)||100,per100:{calories:parseFloat(n["energy-kcal_100g"])||parseFloat(n["energy-kcal"])||0,protein:parseFloat(n["proteins_100g"])||0,carbs:parseFloat(n["carbohydrates_100g"])||0,fat:parseFloat(n["fat_100g"])||0}};
+        sProduct(pd);sServingG(String(pd.servingGrams));
+        const recent=(d.recentScans||[]).filter(r=>r.barcode!==bc);
+        sd({...d,recentScans:[pd,...recent].slice(0,8)});
+        sMode("confirm");
+      }else{sScanErr("Product not found. Try searching by name or enter manually.");sMode("scan");}
+    }catch{sScanErr("Network error — check connection.");sMode("scan");}
+  };
+
+  const doSearch=async()=>{
+    if(!searchQ.trim())return;
+    setSearching(true);sSearchRes([]);
+    try{
+      const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQ)}&json=1&page_size=10&fields=product_name,brands,stores,image_url,nutriments,serving_size,serving_quantity,code`);
+      const data=await r.json();
+      sSearchRes((data.products||[]).filter(p=>p.product_name&&p.nutriments&&(p.nutriments["energy-kcal_100g"]||p.nutriments["energy-kcal"])));
+    }catch{sSearchRes([]);}
+    setSearching(false);
+  };
+
+  const selectProduct=p=>{
+    const n=p.nutriments||{};
+    const pd={barcode:p.code||"",name:p.product_name||"Unknown",brand:p.brands||"",stores:p.stores||"",image:p.image_url||"",servingSize:p.serving_size||"100g",servingGrams:parseFloat(p.serving_quantity)||100,per100:{calories:parseFloat(n["energy-kcal_100g"])||parseFloat(n["energy-kcal"])||0,protein:parseFloat(n["proteins_100g"])||0,carbs:parseFloat(n["carbohydrates_100g"])||0,fat:parseFloat(n["fat_100g"])||0}};
+    sProduct(pd);sServingG(String(pd.servingGrams||100));sMode("confirm");
+  };
+
+  const calcM=()=>{if(!product)return{calories:0,protein:0,carbs:0,fat:0};const r=parseFloat(servingG)||0;const ratio=r/100;return{calories:Math.round(product.per100.calories*ratio),protein:Math.round(product.per100.protein*ratio*10)/10,carbs:Math.round(product.per100.carbs*ratio*10)/10,fat:Math.round(product.per100.fat*ratio*10)/10};};
+
+  const logProduct=()=>{
+    if(!product)return;
+    const m=calcM();
+    sd({...d,meals:[{id:"m"+Date.now(),name:product.name,brand:product.brand,stores:product.stores,image:product.image,type:mt,servingG:parseFloat(servingG),barcode:product.barcode,...m,date:td()},...(d.meals||[])],xp:d.xp+XP.n});
+    sxp(XP.n);sProduct(null);sSearchQ("");sSearchRes([]);sMode("log");
+  };
+
+  const addManual=()=>{if(!meal.trim())return;sd({...d,meals:[{id:"m"+Date.now(),name:meal.trim(),type:mt,calories:parseFloat(cal)||0,protein:parseFloat(pro)||0,carbs:parseFloat(carb)||0,fat:parseFloat(fat)||0,date:td()},...(d.meals||[])],xp:d.xp+XP.n});sML("");sCal("");sPro("");sCb("");sFat("");sxp(XP.n);};
+
+  const pm=calcM();
+  const hasBD="BarcodeDetector" in window;
+  const recent=d.recentScans||[];
+  const BackBtn=({to=()=>sMode("log"),label})=><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}><button onClick={to} style={{background:"none",border:"none",color:C.sb,cursor:"pointer",fontSize:22,lineHeight:1,padding:0}}>←</button><span style={{color:C.tx,fontWeight:700,fontSize:15}}>{label}</span></div>;
+
+  return <div>
+    <SH title="Nutrition" sub="Track meals & macros."/>
+
+    {/* Macro rings */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10,marginBottom:18}}>
+      {[["CALS",tC,tgt.calories,C.or],["PROTEIN",tP,tgt.protein,C.gn],["CARBS",tCb,tgt.carbs,C.cy],["FAT",tF,tgt.fat,C.pp]].map(([l,v,mx,c])=>
+        <Cd key={l} style={{padding:12}}>
+          <div style={{color:C.sb,fontSize:9,letterSpacing:1,fontWeight:600,marginBottom:2}}>{l}</div>
+          <div style={{color:c,fontSize:18,fontWeight:800,fontFamily:"Outfit,sans-serif",lineHeight:1}}>{Math.round(v)}<span style={{fontSize:10,color:C.sb}}>/{mx}</span></div>
+          <PB val={v} max={mx} col={c}/>
+        </Cd>
+      )}
+    </div>
+
+    {/* LOG mode */}
+    {mode==="log"&&<>
+      <div style={{display:"flex",gap:5,marginBottom:12}}>
+        {["Breakfast","Lunch","Dinner","Snack"].map(t=><button key={t} onClick={()=>sMT(t)} style={{flex:1,padding:"7px 4px",borderRadius:8,border:mt===t?"1px solid "+C.ac:"1px solid "+C.bd,background:mt===t?C.ag:C.sf,color:mt===t?C.ac:C.sb,fontSize:11,fontWeight:600,cursor:"pointer"}}>{t}</button>)}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+        <button onClick={startScan} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px",borderRadius:12,border:"1px solid "+C.ac,background:C.ag,color:C.ac,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>
+          <span style={{fontSize:20}}>📷</span> Scan Barcode
+        </button>
+        <button onClick={()=>sMode("search")} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px",borderRadius:12,border:"1px solid "+C.bd,background:C.sf,color:C.tx,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>
+          <span style={{fontSize:20}}>🔍</span> Search Food
+        </button>
+      </div>
+
+      {recent.length>0&&<Cd style={{marginBottom:14}}>
+        <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:10}}>RECENT SCANS</div>
+        {recent.slice(0,4).map((r,i)=>
+          <div key={i} onClick={()=>{sProduct(r);sServingG(String(r.servingGrams||100));sMode("confirm");}} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:10,background:C.sf,cursor:"pointer",border:"1px solid "+C.bd,marginBottom:i<Math.min(recent.length,4)-1?6:0}}>
+            {r.image?<img src={r.image} alt="" style={{width:34,height:34,objectFit:"contain",borderRadius:6,background:"#fff",flexShrink:0}}/>:<div style={{width:34,height:34,borderRadius:6,background:C.mt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🍽</div>}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:C.tx,fontSize:12.5,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</div>
+              <div style={{color:C.sb,fontSize:10.5}}>{r.brand||"Unknown brand"}</div>
+            </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <div style={{color:C.or,fontSize:11,fontWeight:700}}>{Math.round(r.per100.calories)} kcal</div>
+              <div style={{color:C.sb,fontSize:9.5}}>per 100g</div>
+            </div>
+          </div>
+        )}
+      </Cd>}
+
+      <Cd>
+        <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>MANUAL ENTRY</div>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <Inp value={meal} onChange={e=>sML(e.target.value)} placeholder="Food name" style={{flex:2}}/>
+          <Inp value={cal} onChange={e=>sCal(e.target.value)} placeholder="Kcal" type="number" style={{flex:1}}/>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <Inp value={pro} onChange={e=>sPro(e.target.value)} placeholder="Protein(g)" type="number" style={{flex:1}}/>
+          <Inp value={carb} onChange={e=>sCb(e.target.value)} placeholder="Carbs(g)" type="number" style={{flex:1}}/>
+          <Inp value={fat} onChange={e=>sFat(e.target.value)} placeholder="Fat(g)" type="number" style={{flex:1}}/>
+          <Bt onClick={addManual}>+</Bt>
+        </div>
+      </Cd>
+
+      {tm.length>0&&<div style={{marginTop:18}}>
+        <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:10}}>TODAY'S MEALS</div>
+        {tm.map(m=><Cd key={m.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",marginBottom:6}}>
+          {m.image?<img src={m.image} alt="" style={{width:40,height:40,objectFit:"contain",borderRadius:8,background:"#fff",flexShrink:0}}/>:<div style={{width:40,height:40,borderRadius:8,background:C.mt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🍽</div>}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:C.tx,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.name}</div>
+            <div style={{color:C.sb,fontSize:10.5,marginBottom:3}}>{m.brand&&<span>{m.brand} · </span>}<span style={{color:C.ac}}>{m.type}</span>{m.servingG&&<span> · {m.servingG}g</span>}</div>
+            <div style={{display:"flex",gap:10}}>
+              <span style={{color:C.or,fontSize:10,fontWeight:700}}>{m.calories} kcal</span>
+              <span style={{color:C.gn,fontSize:10,fontWeight:600}}>P {m.protein}g</span>
+              <span style={{color:C.cy,fontSize:10,fontWeight:600}}>C {m.carbs}g</span>
+              <span style={{color:C.pp,fontSize:10,fontWeight:600}}>F {m.fat}g</span>
+            </div>
+            {m.stores&&<div style={{color:C.mt,fontSize:10,marginTop:2}}>📍 {m.stores}</div>}
+          </div>
+          <button onClick={()=>sd({...d,meals:d.meals.filter(x=>x.id!==m.id)})} style={{background:"none",border:"none",cursor:"pointer",color:C.mt,fontSize:18,flexShrink:0}}>×</button>
+        </Cd>)}
+      </div>}
+    </>}
+
+    {/* SCAN mode */}
+    {mode==="scan"&&<>
+      <BackBtn label="Barcode Scanner" to={()=>{stopCamera();setScanning(false);sMode("log");sScanErr("");}}/>
+      {hasBD&&scanning&&<div style={{position:"relative",borderRadius:16,overflow:"hidden",background:"#000",marginBottom:14,aspectRatio:"4/3",maxHeight:340}}>
+        <video ref={videoRef} muted playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+        <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,pointerEvents:"none"}}>
+          <div style={{width:"72%",aspectRatio:"3/1.2",border:"2.5px solid "+C.ac,borderRadius:10,boxShadow:"0 0 0 9999px rgba(0,0,0,0.45)",animation:"pulse 2s ease infinite"}}/>
+          <span style={{color:"rgba(255,255,255,0.85)",fontSize:12,fontWeight:600,textShadow:"0 1px 4px rgba(0,0,0,0.9)"}}>Point camera at barcode</span>
+        </div>
+      </div>}
+      {hasBD&&!scanning&&!scanErr&&<Cd style={{textAlign:"center",padding:30,marginBottom:14}}><div style={{color:C.sb,fontSize:13,animation:"pulse 1s infinite"}}>Starting camera...</div></Cd>}
+      {!hasBD&&<Cd style={{marginBottom:14,background:"rgba(245,158,11,0.05)",borderColor:"rgba(245,158,11,0.2)",padding:14}}><div style={{color:C.ac,fontSize:12,fontWeight:700,marginBottom:4}}>⚠ Scanner requires Chrome or Safari 17+</div><div style={{color:C.sb,fontSize:11}}>Enter the barcode number manually below.</div></Cd>}
+      {scanErr&&<Cd style={{marginBottom:14,background:C.rg,borderColor:"rgba(239,68,68,0.2)",padding:12}}><div style={{color:C.rd,fontSize:12,fontWeight:600}}>{scanErr}</div></Cd>}
+      <Cd>
+        <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>MANUAL BARCODE ENTRY</div>
+        <div style={{display:"flex",gap:8}}>
+          <Inp value={manualBC} onChange={e=>sManualBC(e.target.value)} placeholder="e.g. 5000112637922" style={{flex:1}} onKeyDown={e=>{if(e.key==="Enter"&&manualBC.trim())lookupBarcode(manualBC.trim());}}/>
+          <Bt onClick={()=>{if(manualBC.trim())lookupBarcode(manualBC.trim());}}>Look Up</Bt>
+        </div>
+      </Cd>
+    </>}
+
+    {/* LOADING mode */}
+    {mode==="loading"&&<Cd style={{textAlign:"center",padding:40}}>
+      <div style={{fontSize:28,marginBottom:12}}>🔍</div>
+      <div style={{color:C.ac,fontSize:12,fontWeight:700,letterSpacing:2,animation:"pulse 1s infinite"}}>SCANNING DATABASE...</div>
+      <div style={{color:C.sb,fontSize:11,marginTop:6}}>Looking up product on OpenFoodFacts</div>
+    </Cd>}
+
+    {/* SEARCH mode */}
+    {mode==="search"&&<>
+      <BackBtn label="Search Food Database" to={()=>{sMode("log");sSearchRes([]);sSearchQ("");}}/>
+      <Cd style={{marginBottom:14}}>
+        <div style={{display:"flex",gap:8}}>
+          <Inp value={searchQ} onChange={e=>sSearchQ(e.target.value)} placeholder="e.g. Greek yogurt, chicken breast..." style={{flex:1}} onKeyDown={e=>{if(e.key==="Enter")doSearch();}}/>
+          <Bt onClick={doSearch}>Search</Bt>
+        </div>
+      </Cd>
+      {searching&&<div style={{textAlign:"center",padding:24,color:C.sb,fontSize:12,animation:"pulse 1s infinite"}}>Searching 3M+ products...</div>}
+      {searchRes.map((p,i)=>{
+        const n=p.nutriments||{};
+        const kcal=parseFloat(n["energy-kcal_100g"])||parseFloat(n["energy-kcal"])||0;
+        const prot=parseFloat(n["proteins_100g"])||0;
+        return <Cd key={i} onClick={()=>selectProduct(p)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",marginBottom:6,cursor:"pointer"}}>
+          {p.image_url?<img src={p.image_url} alt="" style={{width:44,height:44,objectFit:"contain",borderRadius:8,background:"#fff",flexShrink:0}}/>:<div style={{width:44,height:44,borderRadius:8,background:C.mt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🍽</div>}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:C.tx,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.product_name}</div>
+            {p.brands&&<div style={{color:C.sb,fontSize:11,marginBottom:2}}>{p.brands}{p.stores&&<span style={{color:C.mt}}> · {p.stores}</span>}</div>}
+            <div style={{display:"flex",gap:10}}>
+              <span style={{color:C.or,fontSize:10,fontWeight:700}}>{Math.round(kcal)} kcal/100g</span>
+              <span style={{color:C.gn,fontSize:10,fontWeight:600}}>P {Math.round(prot)}g/100g</span>
+            </div>
+          </div>
+          <span style={{color:C.sb,fontSize:22,flexShrink:0}}>›</span>
+        </Cd>;
+      })}
+      {!searching&&searchRes.length===0&&searchQ.trim()&&<div style={{textAlign:"center",padding:24,color:C.sb,fontSize:12}}>No results found. Try a different term.</div>}
+    </>}
+
+    {/* CONFIRM mode */}
+    {mode==="confirm"&&product&&<>
+      <BackBtn label="Confirm & Log" to={()=>{sMode("log");sProduct(null);}}/>
+      <Cd style={{marginBottom:14,background:"linear-gradient(135deg,rgba(245,158,11,0.04),rgba(6,182,212,0.02))"}}>
+        <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
+          {product.image?<img src={product.image} alt="" style={{width:72,height:72,objectFit:"contain",borderRadius:12,background:"#fff",flexShrink:0}}/>:<div style={{width:72,height:72,borderRadius:12,background:C.mt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,flexShrink:0}}>🍽</div>}
+          <div style={{flex:1}}>
+            <div style={{color:C.tx,fontSize:15,fontWeight:700,lineHeight:1.3,marginBottom:5}}>{product.name}</div>
+            {product.brand&&<div style={{color:C.ac,fontSize:12,fontWeight:600,marginBottom:2}}>{product.brand}</div>}
+            {product.stores&&<div style={{color:C.sb,fontSize:11,marginBottom:2}}>📍 {product.stores}</div>}
+            {product.barcode&&<div style={{color:C.mt,fontSize:10}}>Barcode: {product.barcode}</div>}
+          </div>
+        </div>
+
+        <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>PER 100g</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:18}}>
+          {[["Cals",product.per100.calories,C.or,"kcal"],["Protein",product.per100.protein,C.gn,"g"],["Carbs",product.per100.carbs,C.cy,"g"],["Fat",product.per100.fat,C.pp,"g"]].map(([l,v,c,u])=>
+            <div key={l} style={{background:C.sf,borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+              <div style={{color:C.sb,fontSize:8.5,letterSpacing:1,fontWeight:600}}>{l.toUpperCase()}</div>
+              <div style={{color:c,fontSize:14,fontWeight:800,fontFamily:"Outfit,sans-serif"}}>{Math.round(v*10)/10}<span style={{fontSize:9,color:C.sb}}>{u}</span></div>
+            </div>
+          )}
+        </div>
+
+        <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:6}}>SERVING SIZE</div>
+        {product.servingSize&&<div style={{color:C.sb,fontSize:11,marginBottom:8}}>Suggested: {product.servingSize}</div>}
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
+          <Inp value={servingG} onChange={e=>sServingG(e.target.value)} type="number" style={{width:85}} placeholder="100"/>
+          <span style={{color:C.sb,fontSize:12}}>grams</span>
+          <div style={{display:"flex",gap:5,marginLeft:"auto"}}>
+            {[50,100,150,200].map(g=><button key={g} onClick={()=>sServingG(String(g))} style={{padding:"5px 9px",borderRadius:7,border:"1px solid "+(servingG===String(g)?C.ac:C.bd),background:servingG===String(g)?C.ag:C.sf,color:servingG===String(g)?C.ac:C.sb,fontSize:11,cursor:"pointer",fontWeight:600}}>{g}g</button>)}
+          </div>
+        </div>
+
+        <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>FOR {servingG||0}g SERVING</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:18}}>
+          {[["Cals",pm.calories,C.or,"kcal"],["Protein",pm.protein,C.gn,"g"],["Carbs",pm.carbs,C.cy,"g"],["Fat",pm.fat,C.pp,"g"]].map(([l,v,c,u])=>
+            <div key={l} style={{background:c+"15",border:"1px solid "+c+"35",borderRadius:8,padding:"9px 10px",textAlign:"center"}}>
+              <div style={{color:C.sb,fontSize:8.5,letterSpacing:1,fontWeight:600}}>{l.toUpperCase()}</div>
+              <div style={{color:c,fontSize:16,fontWeight:800,fontFamily:"Outfit,sans-serif"}}>{v}<span style={{fontSize:9,color:C.sb}}>{u}</span></div>
+            </div>
+          )}
+        </div>
+
+        <div style={{color:C.sb,fontSize:9.5,letterSpacing:1.5,fontWeight:600,marginBottom:8}}>MEAL TYPE</div>
+        <div style={{display:"flex",gap:5,marginBottom:16}}>
+          {["Breakfast","Lunch","Dinner","Snack"].map(t=><button key={t} onClick={()=>sMT(t)} style={{flex:1,padding:"7px 4px",borderRadius:8,border:mt===t?"1px solid "+C.ac:"1px solid "+C.bd,background:mt===t?C.ag:C.sf,color:mt===t?C.ac:C.sb,fontSize:10.5,fontWeight:600,cursor:"pointer"}}>{t}</button>)}
+        </div>
+
+        <button onClick={logProduct} style={{width:"100%",padding:"13px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"#000",fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"Outfit,sans-serif",letterSpacing:0.5}}>
+          ✓ Log This Meal
+        </button>
+      </Cd>
+    </>}
+  </div>;
+}
 
 // WEIGHT
 function Weight({data:d,setData:sd,sxp}){const[wt,sWt]=useState(""),[tW,sTW]=useState(d.weightTarget?.weight||""),[tD,sTD]=useState(d.weightTarget?.date||"");const log=(d.weightLog||[]).sort((a,b)=>a.date.localeCompare(b.date)),last=log.length?log[log.length-1]:null;const l7=log.slice(-7).map(w=>({day:dn2(w.date),weight:w.weight}));const add=()=>{if(!wt)return;sd({...d,weightLog:[...(d.weightLog||[]),{id:"w"+Date.now(),weight:parseFloat(wt),date:td()}],xp:d.xp+XP.wt});sWt("");sxp(XP.wt);};return <div><SH title="Weight" sub="Track progress."/><div style={{display:"flex",gap:12,marginBottom:18}}><SC label="CURRENT" value={last?last.weight+"kg":"--"} color={C.cy}/><SC label="CHANGE" value={last&&log[0]?(last.weight-log[0].weight>0?"+":"")+(last.weight-log[0].weight).toFixed(1)+"kg":"--"} color={last&&log[0]?(last.weight<log[0].weight?C.gn:C.rd):C.sb}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><Cd><div style={{display:"flex",gap:10,marginBottom:12}}><Inp value={wt} onChange={e=>sWt(e.target.value)} placeholder="kg" type="number" style={{flex:1}}/><Bt onClick={add}>+ Log</Bt></div><div style={{color:C.sb,fontSize:10,fontWeight:600,marginBottom:6}}>TARGET</div><div style={{display:"flex",gap:8,marginBottom:8}}><Inp value={tW} onChange={e=>sTW(e.target.value)} placeholder="kg" type="number" style={{flex:1}}/><Inp value={tD} onChange={e=>sTD(e.target.value)} type="date" style={{flex:1}}/></div><Bt v="secondary" onClick={()=>sd({...d,weightTarget:{weight:parseFloat(tW)||null,date:tD||null}})} style={{width:"100%",justifyContent:"center"}}>Save</Bt>{d.weightTarget?.weight&&<div style={{color:C.sb,fontSize:11,marginTop:8,textAlign:"center"}}>Target: <span style={{color:C.ac,fontWeight:700}}>{d.weightTarget.weight}kg</span></div>}</Cd><Cd><div style={{color:C.sb,fontSize:10,letterSpacing:1.5,fontWeight:600,marginBottom:12}}>TREND</div><ResponsiveContainer width="100%" height={160}><LineChart data={l7}><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill:C.sb,fontSize:10}}/><YAxis hide domain={["auto","auto"]}/><Line type="monotone" dataKey="weight" stroke={C.cy} strokeWidth={2.5} dot={{fill:C.cy,r:3}}/></LineChart></ResponsiveContainer></Cd></div></div>;}
@@ -143,7 +431,7 @@ const mobile=useIsMobile();const[sideOpen,setSideOpen]=useState(false);
   useEffect(()=>{if(!isAdmin)return;const check=async()=>{const{data}=await supabase.rpc('get_all_profiles');sPC((data||[]).filter(x=>x.status==="pending").length);};check();const iv=setInterval(check,15000);return()=>clearInterval(iv);},[isAdmin]);
 
   useEffect(()=>{if(!user)return;loadUD(user.id).then(d2=>{
-    if(!d2.goals?.daily)d2.goals={daily:[],weekly:[],monthly:[],yearly:[]};if(!d2.goalArchive)d2.goalArchive=[];if(!d2.meals)d2.meals=[];if(!d2.weightLog)d2.weightLog=[];if(!d2.weightTarget)d2.weightTarget={weight:null,date:null};if(!d2.routine)d2.routine=DD().routine;if(!d2.routineSat)d2.routineSat=[];if(!d2.routineSun)d2.routineSun=[];if(!d2.routineLog)d2.routineLog={};if(!d2.macroTargets)d2.macroTargets={calories:2500,protein:150,carbs:300,fat:80};
+    if(!d2.goals?.daily)d2.goals={daily:[],weekly:[],monthly:[],yearly:[]};if(!d2.goalArchive)d2.goalArchive=[];if(!d2.meals)d2.meals=[];if(!d2.weightLog)d2.weightLog=[];if(!d2.weightTarget)d2.weightTarget={weight:null,date:null};if(!d2.recentScans)d2.recentScans=[];if(!d2.routine)d2.routine=DD().routine;if(!d2.routineSat)d2.routineSat=[];if(!d2.routineSun)d2.routineSun=[];if(!d2.routineLog)d2.routineLog={};if(!d2.macroTargets)d2.macroTargets={calories:2500,protein:150,carbs:300,fat:80};
     const today=td(),w=wkk(),m=mkk(),y=ykk();
     if(d2.lastDate&&d2.lastDate!==today){if(d2.goals.daily.length>0){d2.goalArchive=[{id:"a"+Date.now(),type:"daily",date:d2.lastDate,periodLabel:d2.lastDate,goals:d2.goals.daily.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.daily.filter(g=>g.completed).length,total:d2.goals.daily.length},...d2.goalArchive];d2.goals.daily=[];}if(d2.lastWeek!==w&&d2.goals.weekly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+1),type:"weekly",date:today,periodLabel:d2.lastWeek,goals:d2.goals.weekly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.weekly.filter(g=>g.completed).length,total:d2.goals.weekly.length},...d2.goalArchive];d2.goals.weekly=[];}if(d2.lastMonth!==m&&d2.goals.monthly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+2),type:"monthly",date:today,periodLabel:d2.lastMonth,goals:d2.goals.monthly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.monthly.filter(g=>g.completed).length,total:d2.goals.monthly.length},...d2.goalArchive];d2.goals.monthly=[];}if(d2.lastYear!==y&&d2.goals.yearly.length>0){d2.goalArchive=[{id:"a"+(Date.now()+3),type:"yearly",date:today,periodLabel:d2.lastYear,goals:d2.goals.yearly.map(g=>({name:g.name,completed:g.completed})),totalCompleted:d2.goals.yearly.filter(g=>g.completed).length,total:d2.goals.yearly.length},...d2.goalArchive];d2.goals.yearly=[];}const act=d2.habits.filter(h=>h.active),prev=d2.habitLog[d2.lastDate]||[];if(prev.length===act.length&&act.length>0){d2.streak=(d2.streak||0)+1;d2.bestStreak=Math.max(d2.bestStreak||0,d2.streak);}else{const yy=new Date();yy.setDate(yy.getDate()-1);if(d2.lastDate!==yy.toISOString().split("T")[0])d2.streak=0;}d2.lastDate=today;d2.lastWeek=w;d2.lastMonth=m;d2.lastYear=y;}
     saveUD(user.id,d2);sD(d2);sLd(true);
