@@ -685,6 +685,7 @@ function SB({page:p,setPage:sp,data:d,isAdmin,pendingCount,mobile,open,setOpen})
 // TRADING HUB
 function TradingHub({data:d,setData:sd,onClose}){
   const[tpg,sTpg]=useState("dashboard");
+  const[strat,sStrat]=useState("MECH");
   const[flt,sFlt]=useState({year:"All",month:"All",session:"All",asset:"All",dow:"All",result:"All"});
   const[af,sAf]=useState({date:td(),time:"09:00",symbol:"",direction:"long",session:"LDN",rValue:"",setup:"",notes:""});
   const[csvMsg,sCsvMsg]=useState("");
@@ -693,14 +694,17 @@ function TradingHub({data:d,setData:sd,onClose}){
   const fileRef=useRef();
   const mobile=useIsMobile();
   const ts=d.trades||[];
-  const yr=[...new Set(ts.map(t=>t.date.slice(0,4)))].sort().reverse();
-  const mo=[...new Set(ts.map(t=>t.date.slice(0,7)))].sort().reverse();
-  const as=[...new Set(ts.map(t=>t.symbol))].sort();
-  const ss=["LDN","NY","ASIA","OTHER"];
+  const STRATS={MECH:{c:"#06b6d4",g:"rgba(6,182,212,0.12)"},HYBRID:{c:"#f59e0b",g:"rgba(245,158,11,0.12)"},LRV:{c:"#8b5cf6",g:"rgba(139,92,246,0.12)"}};
+  const sc=STRATS[strat];
+  const sts=ts.filter(t=>(t.strategy||"MECH")===strat);
+  const yr=[...new Set(sts.map(t=>t.date.slice(0,4)))].sort().reverse();
+  const mo=[...new Set(sts.map(t=>t.date.slice(0,7)))].sort().reverse();
+  const as=[...new Set(sts.map(t=>t.symbol))].sort();
+  const ss=["LDN","NY","OTHER"];
   const DNS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const MNS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-  const ft=ts.filter(t=>{
+  const ft=sts.filter(t=>{
     if(flt.year!=="All"&&!t.date.startsWith(flt.year))return false;
     if(flt.month!=="All"&&!t.date.startsWith(flt.month))return false;
     if(flt.session!=="All"&&t.session!==flt.session)return false;
@@ -731,10 +735,10 @@ function TradingHub({data:d,setData:sd,onClose}){
   const brkDow=()=>{const acc={};ft.forEach(t=>{const dw=DNS[new Date(t.date+"T12:00:00").getDay()];if(!acc[dw])acc[dw]={tr:0,wi:0,tR:0};acc[dw].tr++;if(t.result==="win")acc[dw].wi++;acc[dw].tR+=t.rValue;});return Object.entries(acc).map(([k,v])=>({k,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))})).sort((a,b)=>b.tr-a.tr);};
   const brkMo=()=>{const acc={};ft.forEach(t=>{const mk=t.date.slice(0,7);if(!acc[mk])acc[mk]={tr:0,wi:0,tR:0,lb:MNS[parseInt(t.date.slice(5,7))-1].toUpperCase()};acc[mk].tr++;if(t.result==="win")acc[mk].wi++;acc[mk].tR+=t.rValue;});return Object.entries(acc).map(([,v])=>({k:v.lb,tr:v.tr,wp:v.tr?Math.round(v.wi/v.tr*100):0,tR:parseFloat(v.tR.toFixed(1))}));};
 
-  const addT=()=>{const r=parseFloat(af.rValue);if(!af.symbol.trim()||isNaN(r))return;const res=r>0?"win":r<0?"loss":"be";sd({...d,trades:[...(d.trades||[]),{id:"t"+Date.now(),date:af.date,time:af.time,symbol:af.symbol.trim().toUpperCase(),direction:af.direction,session:af.session,rValue:r,result:res,setup:af.setup,notes:af.notes}]});sAf({date:td(),time:"09:00",symbol:"",direction:"long",session:"LDN",rValue:"",setup:"",notes:""});sTpg("log");};
+  const addT=()=>{const r=parseFloat(af.rValue);if(!af.symbol.trim()||isNaN(r))return;const res=r>0?"win":r<0?"loss":"be";sd({...d,trades:[...(d.trades||[]),{id:"t"+Date.now(),date:af.date,time:af.time,symbol:af.symbol.trim().toUpperCase(),direction:af.direction,session:af.session,rValue:r,result:res,setup:af.setup,notes:af.notes,strategy:strat}]});sAf({date:td(),time:"09:00",symbol:"",direction:"long",session:"LDN",rValue:"",setup:"",notes:""});sTpg("log");};
   const delT=id=>sd({...d,trades:(d.trades||[]).filter(t=>t.id!==id)});
-  const importC=e=>{const file=e.target.files[0];if(!file)return;const rdr=new FileReader();rdr.onload=ev=>{const lines=ev.target.result.split("\n").filter(l=>l.trim());const nT=[];for(let i=1;i<lines.length;i++){const c=lines[i].split(",").map(x=>x.trim().replace(/^"|"$/g,""));if(c.length<6)continue;const[dt,ti,sym,dir,sess,rv,...rest]=c;const rv2=parseFloat(rv);if(!dt||!sym||isNaN(rv2))continue;nT.push({id:"t"+Date.now()+i,date:dt,time:ti||"09:00",symbol:sym.toUpperCase(),direction:dir||"long",session:sess||"OTHER",rValue:rv2,result:rv2>0?"win":rv2<0?"loss":"be",setup:rest[0]||"",notes:rest[1]||""});}if(!nT.length){sCsvMsg("No valid rows. Format: date,time,symbol,direction,session,r");return;}sd({...d,trades:[...(d.trades||[]),...nT]});sCsvMsg(nT.length+" trades imported!");setTimeout(()=>sCsvMsg(""),3000);};rdr.readAsText(file);e.target.value="";};
-  const exportC=()=>{const rows=[["date","time","symbol","direction","session","r","result","setup","notes"],...(d.trades||[]).map(t=>[t.date,t.time,t.symbol,t.direction,t.session,t.rValue,t.result,t.setup||"",t.notes||""])];const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}));a.download="protocol_x_trades.csv";a.click();};
+  const importC=e=>{const file=e.target.files[0];if(!file)return;const rdr=new FileReader();rdr.onload=ev=>{const lines=ev.target.result.split("\n").filter(l=>l.trim());const nT=[];for(let i=1;i<lines.length;i++){const c=lines[i].split(",").map(x=>x.trim().replace(/^"|"$/g,""));if(c.length<6)continue;const[dt,ti,sym,dir,sess,rv,...rest]=c;const rv2=parseFloat(rv);if(!dt||!sym||isNaN(rv2))continue;nT.push({id:"t"+Date.now()+i,date:dt,time:ti||"09:00",symbol:sym.toUpperCase(),direction:dir||"long",session:sess||"OTHER",rValue:rv2,result:rv2>0?"win":rv2<0?"loss":"be",setup:rest[0]||"",notes:rest[1]||"",strategy:strat});}if(!nT.length){sCsvMsg("No valid rows. Format: date,time,symbol,direction,session,r");return;}sd({...d,trades:[...(d.trades||[]),...nT]});sCsvMsg(nT.length+" "+strat+" trades imported!");setTimeout(()=>sCsvMsg(""),3000);};rdr.readAsText(file);e.target.value="";};
+  const exportC=()=>{const rows=[["strategy","date","time","symbol","direction","session","r","result","setup","notes"],...sts.map(t=>[t.strategy||strat,t.date,t.time,t.symbol,t.direction,t.session,t.rValue,t.result,t.setup||"",t.notes||""])];const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}));a.download=`protocol_x_${strat.toLowerCase()}_trades.csv`;a.click();};
 
   const normDate=s=>{if(!s)return null;s=s.trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const a=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(a){const[,p1,p2,yr]=a;return parseInt(p1)>12?`${yr}-${p2.padStart(2,"0")}-${p1.padStart(2,"0")}`:`${yr}-${p1.padStart(2,"0")}-${p2.padStart(2,"0")}`;}const b=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);if(b)return `${b[1]}-${b[2].padStart(2,"0")}-${b[3].padStart(2,"0")}`;return null;};
   const parsePaste=raw=>{if(!raw.trim())return[];const lines=raw.trim().split("\n").filter(l=>l.trim());if(!lines.length)return[];const sep=lines[0].includes("\t")?"\t":",";const rows=lines.map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,"")));const h0=rows[0].map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,""));const MAPS={date:["date","day","tradedate"],time:["time","entrytime"],symbol:["symbol","pair","instrument","asset","market","ticker","currency"],direction:["direction","side","type","dir","buysell","longshort"],session:["session","sess","market"],r:["r","rvalue","rr","pnl","pandl","profit","result","risk"],setup:["setup","strategy","pattern","strat","entry","signal"],notes:["notes","note","comment","comments","detail","details","remarks"]};const colMap={date:-1,time:-1,symbol:-1,direction:-1,session:-1,r:-1,setup:-1,notes:-1};let hasHeader=false;for(const[f,aliases]of Object.entries(MAPS)){for(let i=0;i<h0.length;i++){if(aliases.some(a=>h0[i].includes(a))){colMap[f]=i;hasHeader=true;break;}}}if(!hasHeader){Object.assign(colMap,{date:0,time:1,symbol:2,direction:3,session:4,r:5,setup:6,notes:7});}const data=rows.slice(hasHeader?1:0);return data.map((cols,i)=>{const g=k=>colMap[k]>=0&&colMap[k]<cols.length?cols[colMap[k]]:"";const dt=normDate(g("date"));const sym=(g("symbol")||"").toUpperCase().replace(/[^A-Z0-9./]/g,"");const raw=g("r").replace(/\s/g,"");const rv=parseFloat(raw.replace(/[^0-9.\-+]/g,""));const errs=[];if(!dt)errs.push("invalid date");if(!sym)errs.push("missing symbol");if(isNaN(rv))errs.push("invalid R value");const rawDir=(g("direction")||"long").toLowerCase();const dir=rawDir.includes("sell")||rawDir.includes("short")?"short":"long";const rawSess=(g("session")||"OTHER").toUpperCase().trim();const sess=["LDN","NY","ASIA","OTHER"].includes(rawSess)?rawSess:(rawSess.includes("LON")?"LDN":rawSess.includes("NEW")||rawSess.includes("NY")?"NY":rawSess.includes("ASIA")?"ASIA":"OTHER");return{id:"t"+Date.now()+i,date:dt||"",time:g("time")||"09:00",symbol:sym,direction:dir,session:sess,rValue:isNaN(rv)?0:rv,result:isNaN(rv)||rv===0?"be":rv>0?"win":"loss",setup:g("setup")||"",notes:g("notes")||"",valid:errs.length===0,errs};}).filter(r=>r.date||r.symbol);};
@@ -765,9 +769,30 @@ function TradingHub({data:d,setData:sd,onClose}){
     </div>
     {/* Sub-nav */}
     <div style={{display:"flex",gap:2,padding:"10px 24px",borderBottom:"1px solid "+C.bd,background:"rgba(8,9,13,0.95)",flexShrink:0}}>
-      {navItems.map(n=><button key={n.id} onClick={()=>sTpg(n.id)} style={{padding:"7px 16px",borderRadius:8,border:tpg===n.id?"1px solid #10b981":"1px solid transparent",background:tpg===n.id?"rgba(16,185,129,0.1)":"transparent",color:tpg===n.id?"#10b981":C.sb,fontSize:12,fontWeight:tpg===n.id?700:500,cursor:"pointer",fontFamily:"Plus Jakarta Sans,sans-serif",transition:"all 0.15s"}}>{n.l}</button>)}
+      {navItems.map(n=><button key={n.id} onClick={()=>sTpg(n.id)} style={{padding:"7px 16px",borderRadius:8,border:tpg===n.id?"1px solid "+sc.c:"1px solid transparent",background:tpg===n.id?sc.g:"transparent",color:tpg===n.id?sc.c:C.sb,fontSize:12,fontWeight:tpg===n.id?700:500,cursor:"pointer",fontFamily:"Plus Jakarta Sans,sans-serif",transition:"all 0.15s"}}>{n.l}</button>)}
       <div style={{flex:1}}/>
-      <div style={{color:C.sb,fontSize:11,alignSelf:"center"}}>{ts.length} total trades · filtered: {ft.length}</div>
+      <div style={{color:C.sb,fontSize:11,alignSelf:"center"}}>{sts.length} {strat} trades · filtered: {ft.length}</div>
+    </div>
+    {/* Strategy Selector */}
+    <div style={{display:"flex",gap:0,borderBottom:"1px solid "+C.bd,background:"rgba(8,9,13,0.92)",flexShrink:0,padding:"0 24px"}}>
+      {Object.entries(STRATS).map(([sk,sv])=>{
+        const stTrades=ts.filter(t=>(t.strategy||"MECH")===sk);
+        const stR=stTrades.reduce((a,t)=>a+t.rValue,0);
+        const stWr=stTrades.length?Math.round(stTrades.filter(t=>t.result==="win").length/stTrades.length*100):0;
+        const active=strat===sk;
+        return <button key={sk} onClick={()=>{sStrat(sk);sFlt({year:"All",month:"All",session:"All",asset:"All",dow:"All",result:"All"});}} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 24px",border:"none",background:"transparent",cursor:"pointer",borderBottom:active?"2px solid "+sv.c:"2px solid transparent",transition:"all 0.15s",marginBottom:"-1px"}}>
+          <div style={{textAlign:"left"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{color:active?sv.c:C.sb,fontSize:14,fontWeight:900,fontFamily:"Outfit,sans-serif",letterSpacing:1}}>{sk}</span>
+              {active&&<span style={{background:sv.g,color:sv.c,fontSize:8,fontWeight:800,padding:"2px 6px",borderRadius:4,letterSpacing:1}}>ACTIVE</span>}
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:3}}>
+              <span style={{color:C.sb,fontSize:10}}>{stTrades.length} trades</span>
+              {stTrades.length>0&&<><span style={{color:stR>0?"#10b981":stR<0?"#ef4444":C.sb,fontSize:10,fontWeight:700}}>{(stR>=0?"+":"")+stR.toFixed(1)}R</span><span style={{color:stWr>=50?"#10b981":C.sb,fontSize:10}}>{stWr}% win</span></>}
+            </div>
+          </div>
+        </button>;
+      })}
     </div>
     {/* Content */}
     <div style={{flex:1,overflowY:"auto",padding:"20px 24px"}}>
@@ -857,7 +882,7 @@ function TradingHub({data:d,setData:sd,onClose}){
         const preview=parsePaste(pasteText);
         const valid=preview.filter(r=>r.valid);
         const invalid=preview.filter(r=>!r.valid);
-        const confirmAll=()=>{if(!valid.length)return;sd({...d,trades:[...(d.trades||[]),...valid.map(({valid:_,errs:__,...t})=>t)]});sPasteText("");sTpg("log");};
+        const confirmAll=()=>{if(!valid.length)return;sd({...d,trades:[...(d.trades||[]),...valid.map(({valid:_,errs:__,...t})=>({...t,strategy:strat}))]});sPasteText("");sTpg("log");};
         return <div>
           <Cd style={{padding:20,marginBottom:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -970,10 +995,10 @@ const mobile=useIsMobile();const[sideOpen,setSideOpen]=useState(false);
   const rp=()=>{if(pg==="today")return <Today data={d} setPage={sPg}/>;if(pg==="dashboard")return <Dash data={d} setPage={sPg}/>;if(pg==="habits")return <Habits {...props}/>;if(pg==="routine")return <Routine {...props}/>;if(pg==="goals")return <Goals {...props}/>;if(pg==="journal")return <Journal {...props}/>;if(pg==="nutrition")return <Nutrition {...props}/>;if(pg==="weight")return <Weight {...props}/>;if(pg==="fitness")return <Fitness {...props}/>;if(pg==="finance")return <Finance {...props}/>;if(pg==="reading")return <Reading {...props}/>;if(pg==="sleep")return <SleepPg {...props}/>;if(pg==="analytics")return <Analytics data={d}/>;if(pg==="weekly")return <WeeklyReview data={d}/>;if(pg==="rank")return <RankPg data={d}/>;if(pg==="settings")return <Sett data={d} setData={setData} onLogout={logout}/>;if(pg==="admin"&&isAdmin)return <AdminPanel/>;return <Today data={d} setPage={sPg}/>;};
 
  return <div style={{display:"flex",minHeight:"100vh",background:C.bg,fontFamily:"Plus Jakarta Sans,sans-serif"}}><style>{css}</style>{toast.v&&<div style={{position:"fixed",top:mobile?20:80,right:mobile?16:30,zIndex:9999,background:"linear-gradient(135deg,#f59e0b,#f97316)",color:"#000",fontWeight:800,fontSize:mobile?15:17,padding:mobile?"9px 18px":"11px 22px",borderRadius:12,animation:"xpSlide 1.5s ease forwards",boxShadow:"0 8px 32px rgba(245,158,11,0.4)",fontFamily:"Outfit,sans-serif"}}>+{toast.a} XP ⚡</div>}{mobile&&<div style={{position:"fixed",top:0,left:0,right:0,background:"rgba(8,9,13,0.98)",borderBottom:"1px solid "+C.bd,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",zIndex:100,backdropFilter:"blur(20px)"}}><button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:C.tx,fontSize:22,cursor:"pointer",padding:4}}>☰</button><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#f97316)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,color:"#000",fontFamily:"Outfit,sans-serif"}}>PX</div><span style={{color:C.tx,fontWeight:700,fontSize:14,fontFamily:"Outfit,sans-serif"}}>PROTOCOL X</span></div><div style={{width:30}}/></div>}<SB page={pg} setPage={sPg} data={d} isAdmin={isAdmin} pendingCount={pendingCount} mobile={mobile} open={sideOpen} setOpen={setSideOpen}/><div style={{marginLeft:mobile?0:210,flex:1,padding:mobile?"70px 16px 80px":"24px 32px",maxWidth:940}}><div key={pg} className="page-enter">{rp()}</div></div>{mobile&&<BottomNav page={pg} setPage={sPg}/>}
-  {/* Trading HUB floating button */}
-  <button onClick={()=>sShowHub(true)} style={{position:"fixed",bottom:mobile?90:28,right:20,zIndex:150,display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:12,padding:"10px 14px",color:"#fff",cursor:"pointer",boxShadow:"0 4px 24px rgba(16,185,129,0.4)",fontFamily:"Outfit,sans-serif"}}>
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    <span style={{fontWeight:800,fontSize:11,letterSpacing:1}}>HUB</span>
+  {/* Trading HUB button — top right corner */}
+  <button onClick={()=>sShowHub(true)} style={{position:"fixed",top:mobile?12:16,right:mobile?60:20,zIndex:150,display:"flex",alignItems:"center",gap:9,background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:12,padding:mobile?"9px 14px":"11px 18px",color:"#fff",cursor:"pointer",boxShadow:"0 4px 24px rgba(16,185,129,0.45)",fontFamily:"Outfit,sans-serif"}}>
+    <svg width={mobile?15:17} height={mobile?15:17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span style={{fontWeight:800,fontSize:mobile?11:13,letterSpacing:1}}>HUB</span>
   </button>
   {showHub&&<TradingHub data={d} setData={setData} onClose={()=>sShowHub(false)}/>}
 </div>;
