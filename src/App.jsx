@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
+import { DecodeHintType, BarcodeFormat } from "@zxing/library";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, AreaChart, Area, LineChart, Line } from "recharts";
 import { supabase } from "./supabase";
 
@@ -44,7 +45,7 @@ function AuthScreen({onAuth}){
   const[mode,setMode]=useState("signin"),[email,setEmail]=useState(""),[pass,setPass]=useState(""),[pass2,setPass2]=useState(""),[err,setErr]=useState(""),[ld,sLd]=useState(false);
   const submit=async()=>{setErr("");sLd(true);const em=email.toLowerCase().trim();
     if(mode==="signup"){if(pass!==pass2){setErr("Passwords don't match.");sLd(false);return;}if(pass.length<6){setErr("Password must be 6+ characters.");sLd(false);return;}const{data,error}=await supabase.auth.signUp({email:em,password:pass});if(error){setErr(error.message);sLd(false);return;}if(em===ADMIN_EMAIL){onAuth(data.user);}else{setErr("PENDING");}}
-    else{const{data,error}=await supabase.auth.signInWithPassword({email:em,password:pass});if(error){setErr(error.message);sLd(false);return;}const{data:profArr}=await supabase.rpc('check_user_status',{user_id:data.user.id});const prof=profArr&&profArr[0]?profArr[0]:null;if(em===ADMIN_EMAIL){onAuth(data.user);sLd(false);return;}if(!prof||prof.status==='pending'){await supabase.auth.signOut();setErr("PENDING");sLd(false);return;}if(prof.status==='denied'){await supabase.auth.signOut();setErr("Access denied by administrator.");sLd(false);return;}onAuth(data.user);}sLd(false);};
+    else{const{data,error}=await supabase.auth.signInWithPassword({email:em,password:pass});if(error){setErr(error.message);sLd(false);return;}if(em===ADMIN_EMAIL){onAuth(data.user);sLd(false);return;}const{data:profArr}=await supabase.rpc('check_user_status',{user_id:data.user.id});const prof=profArr&&profArr[0]?profArr[0]:null;if(!prof||prof.status==='pending'){await supabase.auth.signOut();setErr("PENDING");sLd(false);return;}if(prof.status==='denied'){await supabase.auth.signOut();setErr("Access denied by administrator.");sLd(false);return;}onAuth(data.user);}sLd(false);};
   if(err==="PENDING")return <div style={{width:"100vw",height:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{maxWidth:440,width:"100%",padding:"0 20px",textAlign:"center"}}><div style={{width:56,height:56,borderRadius:16,background:"linear-gradient(135deg,#f59e0b,#f97316)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:900,color:"#000",margin:"0 auto 20px",fontFamily:"Outfit,sans-serif"}}>PX</div><div style={{color:C.ac,fontSize:22,fontWeight:800,fontFamily:"Outfit,sans-serif",marginBottom:8}}>AWAITING APPROVAL</div><div style={{color:C.sb,fontSize:14,lineHeight:1.6,marginBottom:24}}>Your request to join Protocol X has been submitted. The administrator must verify your access. VIP only.</div><Cd style={{display:"inline-flex",alignItems:"center",gap:8,padding:"12px 20px"}}><div style={{width:10,height:10,borderRadius:5,background:C.ac,animation:"pulse 2s infinite"}}/><span style={{color:C.ac,fontWeight:600,fontSize:13}}>PENDING VERIFICATION</span></Cd><div style={{marginTop:24}}><button onClick={()=>{setErr("");setMode("signin");}} style={{background:"none",border:"none",color:C.sb,cursor:"pointer",fontSize:13}}>← Back to Sign In</button></div></div></div>;
   return <div style={{width:"100vw",height:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{maxWidth:420,width:"100%",padding:"0 20px"}}><div style={{textAlign:"center",marginBottom:32}}><div style={{width:52,height:52,borderRadius:14,background:"linear-gradient(135deg,#f59e0b,#f97316)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:"#000",margin:"0 auto 16px",fontFamily:"Outfit,sans-serif"}}>PX</div><div style={{color:C.tx,fontSize:26,fontWeight:800,fontFamily:"Outfit,sans-serif"}}>PROTOCOL X</div><div style={{color:C.sb,fontSize:11,letterSpacing:3,fontWeight:600,marginTop:2}}>THE OPERATING SYSTEM FOR THE 0.1%</div></div><Cd style={{padding:28}}><div style={{display:"flex",gap:4,marginBottom:24}}>{["signin","signup"].map(m=><button key={m} onClick={()=>{setMode(m);setErr("");}} style={{flex:1,padding:"10px",borderRadius:10,border:mode===m?"1px solid "+C.ac:"1px solid "+C.bd,background:mode===m?C.ag:"transparent",color:mode===m?C.ac:C.sb,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>{m==="signin"?"Sign In":"Sign Up"}</button>)}</div><div style={{marginBottom:14}}><label style={{color:C.sb,fontSize:10.5,fontWeight:600,letterSpacing:1,display:"block",marginBottom:6}}>EMAIL</label><Inp value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={{width:"100%",boxSizing:"border-box"}}/></div><div style={{marginBottom:14}}><label style={{color:C.sb,fontSize:10.5,fontWeight:600,letterSpacing:1,display:"block",marginBottom:6}}>PASSWORD</label><Inp value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",boxSizing:"border-box"}}/></div>{mode==="signup"&&<div style={{marginBottom:14}}><label style={{color:C.sb,fontSize:10.5,fontWeight:600,letterSpacing:1,display:"block",marginBottom:6}}>CONFIRM PASSWORD</label><Inp value={pass2} onChange={e=>setPass2(e.target.value)} type="password" placeholder="••••••••" style={{width:"100%",boxSizing:"border-box"}}/></div>}{err&&err!=="PENDING"&&<div style={{color:C.rd,fontSize:12,marginBottom:12,padding:"8px 12px",background:C.rg,borderRadius:8}}>{err}</div>}<Bt onClick={submit} style={{width:"100%",justifyContent:"center",padding:"12px",fontSize:14}}>{ld?"Processing...":mode==="signin"?"Authenticate →":"Request Access to Protocol X →"}</Bt>{mode==="signup"&&<div style={{color:C.sb,fontSize:11,textAlign:"center",marginTop:14}}>VIP access requires admin approval.</div>}</Cd><div style={{textAlign:"center",marginTop:20}}><div style={{display:"inline-flex",alignItems:"center",gap:6,color:C.sb,fontSize:11}}><div style={{width:6,height:6,borderRadius:3,background:C.gn}}/> PROTOCOL X ONLINE</div></div></div></div>;
 }
@@ -351,9 +352,12 @@ function Nutrition({data:d,setData:sd,sxp}){
   useEffect(()=>{
     if(mode!=="scan")return;
     let live=true;
-    const reader=new BrowserMultiFormatReader();
+    const hints=new Map();
+    hints.set(DecodeHintType.TRY_HARDER,[true]);
+    hints.set(DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.EAN_13,BarcodeFormat.EAN_8,BarcodeFormat.UPC_A,BarcodeFormat.UPC_E,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39,BarcodeFormat.QR_CODE,BarcodeFormat.DATA_MATRIX,BarcodeFormat.ITF]);
+    const reader=new BrowserMultiFormatReader(hints);
     reader.decodeFromConstraints(
-      {video:{facingMode:{ideal:"environment"},width:{ideal:1280}}},
+      {video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}},
       videoRef.current,
       (result,err,controls)=>{
         if(!controlsRef.current)controlsRef.current=controls;
@@ -373,7 +377,8 @@ function Nutrition({data:d,setData:sd,sxp}){
       const data=await r.json();
       if(data.status===1&&data.product){
         const p=data.product,n=p.nutriments||{};
-        const pd={barcode:bc,name:p.product_name||"Unknown Product",brand:p.brands||"",stores:p.stores||"",image:p.image_url||"",servingSize:p.serving_size||"100g",servingGrams:parseFloat(p.serving_quantity)||100,per100:{calories:parseFloat(n["energy-kcal_100g"])||parseFloat(n["energy-kcal"])||0,protein:parseFloat(n["proteins_100g"])||0,carbs:parseFloat(n["carbohydrates_100g"])||0,fat:parseFloat(n["fat_100g"])||0}};
+        const kcal100=parseFloat(n["energy-kcal_100g"])||parseFloat(n["energy-kcal"])||Math.round((parseFloat(n["energy_100g"])||0)/4.184)||0;
+        const pd={barcode:bc,name:p.product_name||"Unknown Product",brand:p.brands||"",stores:p.stores||"",image:p.image_url||"",servingSize:p.serving_size||"100g",servingGrams:parseFloat(p.serving_quantity)||100,per100:{calories:kcal100,protein:parseFloat(n["proteins_100g"])||parseFloat(n["protein_100g"])||0,carbs:parseFloat(n["carbohydrates_100g"])||parseFloat(n["carbohydrate_100g"])||0,fat:parseFloat(n["fat_100g"])||0}};
         sProduct(pd);sServingG(String(pd.servingGrams));
         sd(prev=>({...prev,recentScans:[pd,...(prev.recentScans||[]).filter(r=>r.barcode!==bc)].slice(0,8)}));
         sMode("confirm");
@@ -385,16 +390,17 @@ function Nutrition({data:d,setData:sd,sxp}){
     if(!searchQ.trim())return;
     setSearching(true);sSearchRes([]);
     try{
-      const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQ)}&json=1&page_size=10&fields=product_name,brands,stores,image_url,nutriments,serving_size,serving_quantity,code`);
+      const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchQ)}&json=1&page_size=24&sort_by=popularity_key&fields=product_name,brands,stores,image_url,nutriments,serving_size,serving_quantity,code`);
       const data=await r.json();
-      sSearchRes((data.products||[]).filter(p=>p.product_name&&p.nutriments&&(p.nutriments["energy-kcal_100g"]||p.nutriments["energy-kcal"])));
+      sSearchRes((data.products||[]).filter(p=>p.product_name&&p.product_name.trim()));
     }catch{sSearchRes([]);}
     setSearching(false);
   };
 
   const selectProduct=p=>{
     const n=p.nutriments||{};
-    const pd={barcode:p.code||"",name:p.product_name||"Unknown",brand:p.brands||"",stores:p.stores||"",image:p.image_url||"",servingSize:p.serving_size||"100g",servingGrams:parseFloat(p.serving_quantity)||100,per100:{calories:parseFloat(n["energy-kcal_100g"])||parseFloat(n["energy-kcal"])||0,protein:parseFloat(n["proteins_100g"])||0,carbs:parseFloat(n["carbohydrates_100g"])||0,fat:parseFloat(n["fat_100g"])||0}};
+    const kcal100s=parseFloat(n["energy-kcal_100g"])||parseFloat(n["energy-kcal"])||Math.round((parseFloat(n["energy_100g"])||0)/4.184)||0;
+    const pd={barcode:p.code||"",name:p.product_name||"Unknown",brand:p.brands||"",stores:p.stores||"",image:p.image_url||"",servingSize:p.serving_size||"100g",servingGrams:parseFloat(p.serving_quantity)||100,per100:{calories:kcal100s,protein:parseFloat(n["proteins_100g"])||parseFloat(n["protein_100g"])||0,carbs:parseFloat(n["carbohydrates_100g"])||parseFloat(n["carbohydrate_100g"])||0,fat:parseFloat(n["fat_100g"])||0}};
     sProduct(pd);sServingG(String(pd.servingGrams||100));sMode("confirm");
   };
 
